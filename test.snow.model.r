@@ -1,6 +1,6 @@
 source('/storage/data/projects/rci/assessments/code/eco_hydrology.R')
 
-snow.melt <- function(precip_mm, Tmax_C, Tmin_C, Date, Snow=NULL, DCoef.val=10.5,lat_deg,slope=0, aspect=0, tempHt=1, windHt=2, groundAlbedo=0.25,
+snow.melt <- function(precip_mm, Tmax_C, Tmin_C, Date, lat_deg,slope=0, aspect=0, tempHt=1, windHt=2, groundAlbedo=0.25,
  		SurfEmissiv=0.95, windSp=1, forest=0, startingSnowDepth_m=0, startingSnowDensity_kg_m3=450){
 
   Tmax.check <- Tmax_C <  Tmin_C
@@ -25,23 +25,41 @@ snow.melt <- function(precip_mm, Tmax_C, Tmin_C, Date, Snow=NULL, DCoef.val=10.5
 	NewSnowWatEq <- precip_m				# m
 	NewSnowWatEq[which(Tav >= 0)] <- 0			# No new snow if average temp above or equals 0 C
         ##--------------------
-        tas.pos <- Tav
-        tas.pos[tas.pos<0]<-0
-        frac <- exp(-tas.pos)
-        model.data <- precip_m
-        model.data[Tav > 10] <- 0
-        warm <- Tav <= 10 & Tav >=0
-        model.data[warm] <- precip_m[warm]*frac[warm]
-        NewSnowWatEq <- model.data
-        R_m <- precip_m
-        R_m[Tav < 0] <- 0
-        R_m[warm] <- precip_m[warm]*(1-frac[warm])
-
-        if (!is.null(Snow)) {
-          NewSnowWatEq <- Snow$snow
-          R_m <- Snow$rain
+        if (1==0) {
+         tas.pos <- Tav
+         tas.pos[tas.pos<0]<-0
+         frac <- exp(-tas.pos)
+         model.data <- precip_m
+         model.data[Tav > 10] <- 0
+         warm <- Tav <= 10 & Tav >=0
+         model.data[warm] <- precip_m[warm]*frac[warm]
+         NewSnowWatEq <- model.data
+         R_m <- precip_m
+         R_m[Tav < 0] <- 0
+         R_m[warm] <- precip_m[warm]*(1-frac[warm]) 
+ 
+         if (!is.null(Snow)) {
+           NewSnowWatEq <- Snow$snow
+           R_m <- Snow$rain
+         }
         }
         ##------------ 
+        tas <- Tav               # degrees C
+        coeffs <- list(a=-49.49,b=0.5628,c=1.5,d=1.0209)
+        frac <- coeffs$a*(tanh(coeffs$b*(tas-coeffs$c))-coeffs$d)
+        sample <- runif(length(tas),min=0,max=100)
+        test <- sample > frac
+        high.temp <- tas > 12
+        test[high.temp] <- TRUE
+        snow.type <- rep(TRUE,length(tas))
+        snow.type[test] <- FALSE
+
+        NewSnowWatEq <- precip_m
+        NewSnowWatEq[!snow.type] <- 0
+        R_m <- precip_m
+        R_m[snow.type] <- 0
+
+        ##-----------------------------
 
         NewSnow <- NewSnowWatEq*WaterDens/NewSnowDensity		# m
 	JDay <- strptime(Date, format="%Y-%m-%d")$yday+1
@@ -138,7 +156,7 @@ snow.melt <- function(precip_mm, Tmax_C, Tmin_C, Date, Snow=NULL, DCoef.val=10.5
 		SnowWaterEq[i] <- max(0,SnowWaterEq[i-1]-SnowMelt[i]+NewSnowWatEq[i])	# (m) Equiv depth of water
                 DensityPerc[i] <- SnowWaterEq[i]/SnowDepth[i]*100                
 
-          if (grepl('21000-03-15',Date[i])) {
+          if (grepl('19988-01-30',Date[i])) {
             print(i)
             print(Date[i])
             print(paste('New Snow (cm): ',NewSnow[i]*100,sep=''))
@@ -165,10 +183,11 @@ snow.melt <- function(precip_mm, Tmax_C, Tmin_C, Date, Snow=NULL, DCoef.val=10.5
             data <- (cbind(Date[s:e],S[s:e],La[s:e]-Lt[s:e],H[s:e],E[s:e],G,P[s:e]))
 
             par(mfrow=c(3,2))
-            plot(as.Date(Date[s:e]),round(precip_mm[s:e],1),type='l',lwd=3,col='blue',main='Precip (mm)',cex.axis=1.5)
+            ##plot(as.Date(Date[s:e]),round(precip_mm[s:e],1),type='l',lwd=3,col='blue',main='Precip (mm)',cex.axis=1.5)
+            plot(as.Date(Date[s:e]),Tmax_C[s:e]-Tmin_C[s:e],type='l',lwd=3,col='red',main='Tavg',cex.axis=1.5)
             plot(as.Date(Date[s:e]),round(NewSnow[s:e]*100,1),type='l',lwd=3,col='blue',main='New Snow (cm)',cex.axis=1.5)
             plot(as.Date(Date[s:e]),Tav[s:e],type='l',lwd=3,col='red',main='Tavg',cex.axis=1.5)
-            plot(as.Date(Date[s:e]),SnowDepth[s:e],type='l',lwd=3,col='blue',main='SnowDepth (cm)',cex.axis=1.5)
+            plot(as.Date(Date[s:e]),SnowWaterEq[s:e]*1000,type='l',lwd=3,col='blue',main='SWE (mm)',cex.axis=1.5)
             plot(as.Date(Date[s:e]),SnowMelt[s:e]*100,type='l',lwd=3,col='orange',main='SnowMelt (cm)',cex.axis=1.5)
             a <- barplot(t(data[,2:7]),legend=c('Solar','Longwave','Sensible','Vapour','Ground','Precip'),cex.axis=1.5,
             args.legend=list(x='bottomleft'),col=c('red','orange','yellow','green','blue','purple'))

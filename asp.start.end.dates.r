@@ -54,7 +54,7 @@ type <- 'SWE'
 
 sites <- c('spuzzum_creek','upper_squamish','chilliwack_river','tenquille_lake')
 site.names <- c('Spuzzum Creek','Upper Squamish','Chilliwack River','Tenquille Lake')
-slen <- 101
+slen <- 1001
 
 results.matrix <- matrix(0,nrow=15,ncol=length(sites))
 
@@ -78,9 +78,9 @@ for (i in seq_along(sites)) {
     pillow.ends <- as.numeric(format(as.Date(season.dates$End),'%j'))
     pillow.lengths <- as.numeric(season.dates$Length)
 
-    pack.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/',site,'.',tolower(model),'.snow.101.csv')
+    pack.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/',site,'.',tolower(model),'.snow.1001.csv')
     pack.sims <- read.csv(pack.file,header=T,as.is=T)
-    swe.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/',site,'.',tolower(model),'.swe.101.csv')
+    swe.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/',site,'.',tolower(model),'.swe.1001.csv')
     swe.sims <- read.csv(swe.file,header=T,as.is=T)
 
     sim.years <- unique(format(as.Date(sim.dates),'%Y'))

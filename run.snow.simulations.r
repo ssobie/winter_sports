@@ -37,6 +37,8 @@ hyper.snow <- function(pr,tasmax,tasmin,coeffs) {
         frac <- coeffs$a*(tanh(coeffs$b*(tas-coeffs$c))-coeffs$d)
         sample <- runif(length(tas),min=0,max=100)
         test <- sample > frac        
+        high.temp <- tas > 12
+        test[high.temp] <- TRUE
         snow.type <- rep(TRUE,length(tas))
         snow.type[test] <- FALSE
 
@@ -62,7 +64,7 @@ aspects.nc <- nc_open(paste0(as.dir,'prism_aspects.nc'))
 bc.aspects <- ncvar_get(aspects.nc,'Band1')/360*2*pi
 nc_close(aspects.nc)
 
-slen <- 1000
+slen <- 1001
 save.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/'
 
 ncep2.swe.sims <- matrix(0,nrow=13696,ncol=slen)
@@ -71,16 +73,36 @@ ncep2.snow.sims <- matrix(0,nrow=13696,ncol=slen)
 era.swe.sims <- matrix(0,nrow=13819,ncol=slen)
 era.snow.sims <- matrix(0,nrow=13819,ncol=slen)
 
+
+sites <- c('shovelnose_mountain',
+           'brookmere',
+           'lightning_lake',
+           'callaghan',
+           'orchid_lake',
+           'palisade_lake',
+           'grouse_mountain',
+           'dog_mountain',
+           'stave_lake',
+           'nahatlatch',
+           'wahleach',
+           'klesilkwa',
+           'hamilton_hill')
+
+sites <- c('klesilkwa',
+           'hamilton_hill')
+
 ##sites <- c('chilliwack_river',
 ##           'upper_squamish',
 ##           'tenquille_lake')
-sites <- 'spuzzum_creek'
+##sites <- 'spuzzum_creek'
+
 
 for (i in seq_along(sites)) {
     site <- sites[i]
     print(site)
     ##Reanalysis 800m data
-    ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_NCEP2_800m_data_193_121.csv')
+    ##ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_NCEP2_800m_data_193_121.csv')
+    ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/',site,'_NCEP2_800m_data.csv')
 
     ncep2.data <- read.csv(ncep2.file,header=T,as.is=T)
     ncep2.pr <- ncep2.data$Pr
@@ -89,7 +111,8 @@ for (i in seq_along(sites)) {
     ncep2.tas <- ncep2.data$Tas
     ncep2.dates <- ncep2.data$Dates
 
-    era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_ERA_800m_data_193_121.csv')
+    ##era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_ERA_800m_data_193_121.csv')
+    era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/',site,'_ERA_800m_data.csv')
     era.data <- read.csv(era.file,header=T,as.is=T)
     era.pr <- era.data$Pr
     era.tasmax <- era.data$Tasmax
@@ -104,19 +127,20 @@ for (i in seq_along(sites)) {
     site.aspect <- bc.aspects[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]    
 
 
-    coeffs <- list(a=-49.49,b=0.4128,c=2.6545,d=1.0209)
+    ##coeffs <- list(a=-49.49,b=0.4128,c=2.6545,d=1.0209)
+    coeffs <- list(a=-49.49,b=0.5628,c=1.5,d=1.0209)
 
     for (k in 1:slen) {
     print(k)
-    ncep2.snow <- hyper.snow(ncep2.pr,ncep2.tasmax,ncep2.tasmin,coeffs)
-    ncep2.results <- snow.melt(Date=ncep2.dates, precip_mm=ncep2.pr, Tmax_C=ncep2.tasmax, Tmin_C=ncep2.tasmin,Snow=ncep2.snow,
+    ##ncep2.snow <- hyper.snow(ncep2.pr,ncep2.tasmax,ncep2.tasmin,coeffs)
+    ncep2.results <- snow.melt(Date=ncep2.dates, precip_mm=ncep2.pr, Tmax_C=ncep2.tasmax, Tmin_C=ncep2.tasmin,
                          lat_deg=lat.bnds, slope=site.slope, aspect=site.aspect, tempHt=1, windHt=2, groundAlbedo=0.25,
                          SurfEmissiv=0.95, windSp=1, forest=0, startingSnowDepth_m=0, startingSnowDensity_kg_m3=600)
     ncep2.swe.sims[,k] <- ncep2.results$swe
     ncep2.snow.sims[,k] <- ncep2.results$snowdepth
 
-    era.snow <- hyper.snow(era.pr,era.tasmax,era.tasmin,coeffs)
-    era.results <- snow.melt(Date=era.dates, precip_mm=era.pr, Tmax_C=era.tasmax, Tmin_C=era.tasmin,Snow=era.snow,
+    ##era.snow <- hyper.snow(era.pr,era.tasmax,era.tasmin,coeffs)
+    era.results <- snow.melt(Date=era.dates, precip_mm=era.pr, Tmax_C=era.tasmax, Tmin_C=era.tasmin,
                          lat_deg=lat.bnds, slope=site.slope, aspect=site.aspect, tempHt=1, windHt=2, groundAlbedo=0.25,
                          SurfEmissiv=0.95, windSp=1, forest=0, startingSnowDepth_m=0, startingSnowDensity_kg_m3=600)
     era.swe.sims[,k] <- era.results$swe

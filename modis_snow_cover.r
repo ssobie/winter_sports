@@ -11,12 +11,12 @@ gettile <- function(tile, path, ftp){
   system(args)
   
   #command to change to a geotiff from hdf.  only getting binary data here.
-  args = paste0('gdal_translate -of GTiff HDF4_EOS:EOS_GRID:', path_to_working_directory, tile, ':MOD_Grid_Snow_500m:Snow_Cover_Daily_Tile ', path, strsplit(tile, '.hdf')[[1]], '.tif')
+  args = paste0('gdal_translate -of GTiff HDF4_EOS:EOS_GRID:', path_to_working_directory, tile, ':MOD_Grid_Snow_500m:NDSI_Snow_Cover ', path, strsplit(tile, '.hdf')[[1]], '.tif')
   system(args)
-  
+  browser()  
 #clean up the junk in the folder, note that if you are on windows, you'll need to use 'DEL' instead of 'RM
-  args = 'rm *.hdf'
-  system(args)
+##  args = paste('rm ',path,'*.hdf',sep='')
+##  system(args)
 }
 
 getdata <- function(yr,m,d,sat,path,shp, tilepattern){
@@ -39,14 +39,14 @@ getdata <- function(yr,m,d,sat,path,shp, tilepattern){
   jd <- sprintf('%03d',DOY)
   
   #ftp folder location on the NSIDC server.  Ifelse is used to decide if its Aqua or Terra that you want.
-  ftp <- ifelse(sat == 'MYD10A1', paste0('ftp://n5eil01u.ecs.nsidc.org/SAN/MOSA/', sat, '.005/', folderdate, '/'), paste0('ftp://n5eil01u.ecs.nsidc.org/SAN/MOST/', sat, '.005/', folderdate, '/'))
+  ftp <- ifelse(sat == 'MYD10A1', paste0('ftp://n5eil01u.ecs.nsidc.org/SAN/MOSA/', sat, '.006/', folderdate, '/'), paste0('ftp://n5eil01u.ecs.nsidc.org/SAN/MOST/', sat, '.006/', folderdate, '/'))
   
   #first need to list the contents of a directory and pipe to a file
   args <- paste0('curl -l ', ftp, ' > ', path, 'contents.txt')
   system(args)
-  
+    
   #read in the contents of the file and get the names of the tiles that we want for the day.
-  list <- as.character(read.table('contents.txt', header = F)$V1)
+  list <- as.character(read.table(paste(path,'contents.txt',sep=''), header = F)$V1)
   #get only the hdfs
   list <- list[grep(list,pattern = '.hdf$')]
   #get only your tiles
@@ -54,18 +54,18 @@ getdata <- function(yr,m,d,sat,path,shp, tilepattern){
   
   #apply the gettile function for all tiles (no output in R, only in your folder)
   lapply(hdfs,gettile, path = path, ftp = ftp)
-  
+  browser()  
   #merge into one file and clip to cheakenv, have to change this slightly if you are using a different number of tiles.
   #get all the tifs for your date.
   tifs <- list.files(path, pattern = paste0(sat,'.A', yr, jd))
   
   #mergegrid name
-  mergegrid <- paste0(sat,'.A', yr, jd, '.merge.tif')
+  mergegrid <- paste0(path,sat,'.A', yr, jd, '.merge.tif')
   
   args <- paste('gdal_merge.py -of GTiff -o' , paste0(path , mergegrid), paste0(path , tifs[1]) , paste0(path , tifs[2]) , paste0(path , tifs[3]) , paste0(path , tifs[4]), paste0(path , tifs[5]))
   
   system(args)
-  
+  browser()  
   #projected grid name
   projgrid <- paste0(sat, '.A', yr, jd, '.merge.bcalb.tif')
   
@@ -84,7 +84,7 @@ getdata <- function(yr,m,d,sat,path,shp, tilepattern){
   
   #clean up the junk, same as before, if you are on windows, you want DEL, not rm
   args <- paste0('rm ', sat, '.A*')
-  system(args)
+  ##system(args)
   
   
   #return the file name, in case you want to read in to R
@@ -92,7 +92,7 @@ getdata <- function(yr,m,d,sat,path,shp, tilepattern){
   
 }
 
-
+path_to_working_directory <- '/storage/data/projects/rci/data/winter_sports/MODIS/'
 
 snow <- getdata(2014,4,1,'MOD10A1', path_to_working_directory,'province_bcalbers.shp', tilepattern)
 

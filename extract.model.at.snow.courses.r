@@ -41,8 +41,8 @@ get.800m.data <- function(site, pr.nc,tasmax.nc,tasmin.nc) {
   lat.bnds <- coords[2]
   elev <- coords[3]
 
-  lon.ix <- which.min(abs(lon-lon.bnds))
-  lat.ix <- which.min(abs(lat-lat.bnds))
+  lon.ix <- 196 ##which.min(abs(lon-lon.bnds)) ##192, 61
+  lat.ix <- 55 ##which.min(abs(lat-lat.bnds))
   print(lon.ix)
   print(lon[lon.ix])
   print(lat.ix)
@@ -83,7 +83,7 @@ get.800m.data <- function(site, pr.nc,tasmax.nc,tasmin.nc) {
              'upper_squamish',
              'wahleach_lake',             
              'tenquille_lake')
-
+sites <- 'chilliwack_river'
 base.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/'
 model <- 'NCEP2'
 
@@ -103,7 +103,7 @@ dates <- netcdf.calendar(pr.nc)
     output <- cbind(as.character(dates),round(cbind(clim.data$pr,clim.data$tasmax,
                                clim.data$tasmin,clim.data$tas),2))
     output <- rbind(c('Dates','Pr','Tasmax','Tasmin','Tas'),output)
-    write.table(output,file=paste('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/',site,'_',model,'_800m_data.csv',sep=''),
+    write.table(output,file=paste('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_',model,'_800m_data_196_55.csv',sep=''),
                 sep=',',row.name=FALSE,col.name=FALSE,quote=FALSE)
 
   }

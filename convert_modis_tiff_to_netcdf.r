@@ -84,7 +84,7 @@ terra.prefix <- 'MOD10A1.'
 aqua.prefix <-  'MYD10A1.'
 
 prefix <- aqua.prefix
-yr <- '2015'
+yr <- '2018'
 year.dates <- seq(from=as.Date(paste0(yr,'-01-01')),by='day',to=as.Date(paste0(yr,'-12-31')))
 months <- sprintf('%02d',1:12)
 

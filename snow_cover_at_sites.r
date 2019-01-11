@@ -56,6 +56,7 @@ modis.snow.days <- vector(mode='list',length=slen)
 modis.valid.days <- vector(mode='list',length=slen)
 
 elevs <- rep(0,slen)
+lons <- rep(0,slen)
 ##---------------------------------------------------------------------------------
 ##MODIS 
 modis.dir <- '/storage/data/projects/rci/data/winter_sports/MODIS_VAN_WHISTLER/'
@@ -82,15 +83,17 @@ bnds <- range(which(date.match))
 for (i in 1:slen) {
   site <- sites[i]
   snow.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/')
-  era.file <- paste0(snow.dir,site,'.era.snow.11.csv')
+  era.file <- paste0(snow.dir,site,'.era.snow.1001.csv')
   era.sims <- read.csv(era.file,header=TRUE,as.is=TRUE)
 
-  ncep2.file <- paste0(snow.dir,site,'.ncep2.snow.11.csv')
+  ncep2.file <- paste0(snow.dir,site,'.ncep2.snow.1001.csv')
   ncep2.sims <- read.csv(ncep2.file,header=TRUE,as.is=TRUE)
 
   print(site)
   coords <- get.coordinates(site)
+  lons[i] <- coords[1]
   elevs[i] <- coords[3]
+  
   m.ox <- which.min(abs(coords[1]-m.lon))
   m.ax <- which.min(abs(coords[2]-m.lat))
 
@@ -113,7 +116,7 @@ for (i in 1:slen) {
   ncep2.cover[ncep2.cover>0.05] <- 1
   ncep2.cover[ncep2.cover<=0.05] <- 0
  
-  snc.matrix <- matrix(snc.modis,nrow=length(snc.modis),ncol=11)         
+  snc.matrix <- matrix(snc.modis,nrow=length(snc.modis),ncol=1001)         
   ##era.diff <- era.cover - snc.matrix
   ##ncep2.diff <- ncep2.cover - snc.matrix
   ##era.cover.diff[[i]] <- apply(era.diff,2,function(x){round(sum(x==0,na.rm=T)/sum(!is.na(x))*100,1)})
@@ -152,6 +155,7 @@ plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/',model
 plot.title <- paste0('MODIS Snow Only Comparison')
 leg.title <- 'Percent (%)'
 ranked.elevs <- order(elevs)
+
 png(filename=plot.file,width=1000,height=500)
 par(mar=c(10,5,3,3))
 plot(0:slen,0:slen,xlab='',ylab='Snow Cover Match (%)',yaxs='i',
@@ -173,11 +177,12 @@ dev.off()
 }
 
 ##MODIS Total Snow Days
-if (1==0) {
-plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/',model,'.total.snow.days.prct.at.sites.11.png')
-plot.title <- paste0('Total Snow Days')
+if (1==1) {
+plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/',model,'.total.snow.days.prct.at.sites.1001.png')
+plot.title <- '' ##paste0('Total Snow Days')
 leg.title <- 'Days'
 ranked.elevs <- order(elevs)
+ranked.lons <- order(lons)
 png(filename=plot.file,width=1000,height=500)
 par(mar=c(10,5,3,3))
 plot(0:slen,0:slen,xlab='',ylab='Snow Days',yaxs='i',
@@ -189,9 +194,9 @@ abline(h=seq(200,900,100),lty=2,col='gray',lwd=2)
 abline(v=1:slen,col='gray')
 for (j in 1:slen) {
     print(elevs[ranked.elevs[j]])
-    boxplot(at=j-0.15,x=era.snow.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.6)
-    boxplot(at=j+0.15,x=ncep2.snow.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.6)
-    points(x=j,y=modis.snow.days[[ranked.elevs[j]]],pch='-',cex=2,col='red')
+    boxplot(at=j-0.175,x=era.snow.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.7,col='blue')
+    boxplot(at=j+0.175,x=ncep2.snow.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.7,col='red')
+    points(x=j,y=modis.snow.days[[ranked.elevs[j]]],pch='-',cex=5,col='black')
 }
 
 box(which='plot')
@@ -200,7 +205,7 @@ dev.off()
 }
 
 ##MODIS Total Snow Days
-if (1==1) {
+if (1==0) {
 plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/',model,'.valid.days.at.sites.11.png')
 plot.title <- paste0('MODIS Observable Days')
 leg.title <- 'Days'

@@ -41,9 +41,11 @@ create.anoms <- function(var.name,file,var.mon) {
         var.anoms[,,ix] <- var.data[,,ix]/var.mean
       if (grepl('tas',var.name))
         var.anoms[,,ix] <- var.data[,,ix] - var.mean
+
     }
   }
   nc_close(nc)
+
   ##Fix the edges for interpolations
   ncol <- dim(var.data)[2]
   for (j in 1:(ncol-1)) {
@@ -86,6 +88,7 @@ bccaq.anomalies <- function(var.name,gcm,base.dir) {
     var.test <- apply(var.data,c(1,2),function(x,fac){tapply(x,fac,sum,na.rm=T)},monthly.ts.fac)
     var.mon <-  apply(var.test,c(2,3),function(x,fac){tapply(x,fac,mean,na.rm=T)},mon.facs)
   }
+
   nc_close(gnc)
   ##------------------------------------  
   var.files <- list.files(path=gcm.dir,pattern=paste(var.name,'_day_',sep=''),full.name=TRUE)
@@ -189,7 +192,6 @@ daily.prism.scale <- function(var.name,gcm,interval,base.dir,prism.dir) {
     ##  var.adjust[flags] <- NA
     ##}
     ##var.adjust[,1:9,] <- NA
-
     ncvar_put(anc,varid=var.name,vals=var.adjust,start=c(1,1,st),count=c(nlon,nlat,len))
   }##Loop over data pieces
   rm(var.adjust)
@@ -224,7 +226,7 @@ run.adjust <- function() {
                 'MIROC5',
                 'MPI-ESM-LR',
                 'MRI-CGCM3')
-  gcm.list <- 'ERA'
+  gcm.list <- 'NCEP2'
 
   for (var.name in var.list) {
     print(var.name)
@@ -232,9 +234,9 @@ run.adjust <- function() {
       print(gcm)
       bccaq.anomalies(var.name,gcm,base.dir)
       interp.bccaq(var.name,gcm,'1979-2016',base.dir,grid.file)
-      ##interp.bccaq(var.name,gcm,'2001-2100',base.dir,grid.file)
+         ##interp.bccaq(var.name,gcm,'2001-2100',base.dir,grid.file)
       daily.prism.scale(var.name,gcm,'1979-2016',base.dir,prism.dir)
-      ##daily.prism.scale(var.name,gcm,'2001-2100',base.dir)
+         ##daily.prism.scale(var.name,gcm,'2001-2100',base.dir)
     }
   }  
 }

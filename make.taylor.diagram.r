@@ -274,9 +274,13 @@ sites <- c('shovelnose_mountain',
            'nahatlatch',
            'wahleach',
            'klesilkwa',
-           'hamilton_hill')
-
-site.letter <- c('M','B','L','C','O','P','G','D','S','N','W','K','H')
+           'hamilton_hill',
+           'chilliwack_river',
+           'spuzzum_creek',
+           'tenquille_lake',
+           'upper_squamish')
+obs.type <- c(rep('course',13),rep('asp',4))
+site.letter <- c('M','B','L','C','O','P','G','D','S','N','W','K','H','R','Z','T','U')
 
 model <- 'ERA'
 
@@ -296,13 +300,17 @@ era.snow.sims <- matrix(0,nrow=10,ncol=13819)
 
 ##Loop over sites
 plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/'
-png(file=paste0(plot.dir,'ncep2.era.snowpack.course.taylor.diagram.png'),width=800,height=800)
+png(file=paste0(plot.dir,'ncep2.era.swe.course.taylor.diagram3.png'),width=800,height=800)
 
 for (i in seq_along(sites)) {
     site <- sites[i]
     print(site)
     ##Reanalysis 800m data
     ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/',site,'_NCEP2_800m_data.csv')
+    if (site=='spuzzum_creek') {
+        ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_NCEP2_800m_data_193_121.csv')
+    }
+
     ncep2.data <- read.csv(ncep2.file,header=T,as.is=T)
     ncep2.pr <- ncep2.data$Pr
     ncep2.tasmax <- ncep2.data$Tasmax
@@ -311,6 +319,10 @@ for (i in seq_along(sites)) {
     ncep2.dates <- ncep2.data$Dates
 
     era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/',site,'_ERA_800m_data.csv')
+    if (site=='spuzzum_creek') {
+        era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_ERA_800m_data_193_121.csv')
+    }
+
     era.data <- read.csv(era.file,header=T,as.is=T)
     era.pr <- era.data$Pr
     era.tasmax <- era.data$Tasmax
@@ -323,22 +335,37 @@ for (i in seq_along(sites)) {
     elev <- coords[3]
     site.slope <- bc.slopes[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]    
     site.aspect <- bc.aspects[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]    
+    
+    ##Observation data
+    if (obs.type[i] == 'course') {
+      obs.file <- paste('/storage/data/projects/rci/data/assessments/snow_model/',site,'_snow_course.csv',sep='')
+      obs.data <- read.csv(obs.file,header=T,as.is=T)
+      obs.dates <- format(as.Date(obs.data[,1]),'%Y-%m-%d')
+      obs.swe <- obs.data[,3] ##mm
+      obs.pack <- obs.data[,2] ##cm
+      obs.dense <-  obs.data[,4]
+    } else {
+       obs.file <- paste('/storage/data/projects/rci/data/assessments/snow_model/snow_pillow/',site,'_asp.csv',sep='')
+       obs.data <- read.csv(obs.file,header=T,as.is=T)
+       obs.dates <- format(as.Date(obs.data[,2]),'%Y-%m-%d')
+       obs.tasmax <- obs.data[,3]
+       obs.tasmin <- obs.data[,5]
+       obs.tas <- (obs.tasmax + obs.tasmin)/2
+       obs.precip <- obs.data[,7]##mm
+       obs.swe <- obs.data[,11] ##mm
+       obs.pack <- obs.data[,13] ##cm
+    }        
 
-    ##Snow Course Data
-    course.file <- paste('/storage/data/projects/rci/data/assessments/snow_model/',site,'_snow_course.csv',sep='')
-    course.data <- read.csv(course.file,header=T,as.is=T)
-    course.dates <- format(as.Date(course.data[,1]),'%Y-%m-%d')
-    course.swe <- course.data[,3] ##mm
-    course.pack <- course.data[,2] ##cm
-    course.dense <-  course.data[,4]
+    ncep2.date.subset <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% obs.dates
+    ncep2.obs.subset <- obs.dates %in% format(as.Date(ncep2.dates),'%Y-%m-%d')
 
-    ncep2.date.subset <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% course.dates
-    ncep2.course.subset <- course.dates %in% format(as.Date(ncep2.dates),'%Y-%m-%d')
+    era.date.subset <- format(as.Date(era.dates),'%Y-%m-%d') %in% obs.dates
+    era.obs.subset <- obs.dates %in% format(as.Date(era.dates),'%Y-%m-%d')
+      
 
-    era.date.subset <- format(as.Date(era.dates),'%Y-%m-%d') %in% course.dates
-    era.course.subset <- course.dates %in% format(as.Date(era.dates),'%Y-%m-%d')
 
     coeffs <- list(a=-49.49,b=0.4128,c=2.6545,d=1.0209)
+    coeffs <- list(a=-49.49,b=0.5628,c=1.5,d=1.0209)
 
     for (k in 1:10) {
     print(k)
@@ -362,19 +389,20 @@ for (i in seq_along(sites)) {
     ##ncep2.site.pack[[i]] <- apply(ncep2.snow.sims*100,2,mean)[ncep2.date.subset]
 
     if (i==1) {
-    taylor2.diagram(course.pack[ncep2.course.subset],apply(ncep2.snow.sims*100,2,mean)[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
-                   main='Snowpack Comparison',pch=site.letter[i],col='red',pcex=1.5,cex.axis=1.5,cex.lab=1.5,cex.main=1.75)                  
-    taylor.diagram(course.pack[era.course.subset],apply(era.snow.sims*100,2,mean)[era.date.subset],sd.arcs=TRUE,normalize=T,
+    taylor2.diagram(obs.swe[ncep2.obs.subset],apply(ncep2.swe.sims*1000,2,mean)[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
+                   main='SWE Comparison',pch=site.letter[i],col='red',pcex=1.5,cex.axis=1.5,cex.lab=1.5,cex.main=1.75)                  
+    taylor.diagram(obs.swe[era.obs.subset],apply(era.swe.sims*1000,2,mean)[era.date.subset],sd.arcs=TRUE,normalize=T,
                    pch=site.letter[i],col='blue',add=TRUE,pcex=1.5,cex=1.5)                  
     
    
     } else {
-    taylor.diagram(course.pack[ncep2.course.subset],apply(ncep2.snow.sims*100,2,mean)[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
+    taylor.diagram(obs.swe[ncep2.obs.subset],apply(ncep2.swe.sims*1000,2,mean)[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
                    pch=site.letter[i],add=T,col='red',pcex=1.5)
-    taylor.diagram(course.pack[era.course.subset],apply(era.snow.sims*100,2,mean)[era.date.subset],sd.arcs=TRUE,normalize=T,
+    taylor.diagram(obs.swe[era.obs.subset],apply(era.swe.sims*1000,2,mean)[era.date.subset],sd.arcs=TRUE,normalize=T,
                    pch=site.letter[i],col='blue',add=TRUE,pcex=1.5)                  
 
     }
+
 }        
 legend('topright',legend=c('NCEP2','ERA'),col=c('red','blue'),pch=16,cex=1.5)
 dev.off()
@@ -386,6 +414,21 @@ dev.off()
 
 
 if (1==0) {
+
+    ##Snow Course Data
+    course.file <- paste('/storage/data/projects/rci/data/assessments/snow_model/',site,'_snow_course.csv',sep='')
+    course.data <- read.csv(course.file,header=T,as.is=T)
+    course.dates <- format(as.Date(course.data[,1]),'%Y-%m-%d')
+    course.swe <- course.data[,3] ##mm
+    course.pack <- course.data[,2] ##cm
+    course.dense <-  course.data[,4]
+
+    ncep2.date.subset <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% course.dates
+    ncep2.course.subset <- course.dates %in% format(as.Date(ncep2.dates),'%Y-%m-%d')
+
+    era.date.subset <- format(as.Date(era.dates),'%Y-%m-%d') %in% course.dates
+    era.course.subset <- course.dates %in% format(as.Date(era.dates),'%Y-%m-%d')
+
 
 ##Compare ERA, NCEP2 snow depth against course depth
 
