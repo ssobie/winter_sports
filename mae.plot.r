@@ -3,7 +3,7 @@
 library(ncdf4)
 library(plotrix)
 
-source('/storage/home/ssobie/code/repos/winter_sports/test.snow.model.r',chdir=T)
+##source('/storage/home/ssobie/code/repos/winter_sports/test.snow.model.r',chdir=T)
 
 get.coordinates <- function(site) {
 
@@ -79,28 +79,39 @@ model.site.swe <- vector(mode='list',length=length(sites))
 
 slen <- 1001
 
-swe.era <- swe.ncep2 <- matrix(0,nrow=slen,ncol=13696)
+era.file <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/grouse_mountain_ERA_800m_data.csv'
+era.data <- read.csv(era.file,header=T,as.is=T)
+era.dates <- era.data$Dates
+era.swe.sims <- matrix(0,nrow=slen,ncol=dim(era.data)[1])
+
+ncep2.file <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/grouse_mountain_NCEP2_800m_data.csv'
+ncep2.data <- read.csv(ncep2.file,header=T,as.is=T)
+ncep2.dates <- ncep2.data$Dates
+ncep2.swe.sims <- matrix(0,nrow=slen,ncol=dim(era.data)[1])
+
+model.match <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% format(as.Date(era.dates),'%Y-%m-%d') 
+
 
 ncep2.course.mae <- era.course.mae <- matrix(0,nrow=length(sites),ncol=slen)
 ncep2.pillow.mae <- era.pillow.mae <- matrix(0,nrow=length(asps),ncol=slen)
 
-model.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/'
+model.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/'
 
 for (i in seq_along(sites)) {
     site <- sites[i]
  
     print(site)
     ##Reanalysis 800m data
-    clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/',site,'_ERA_800m_data.csv')
-    clim.data <- read.csv(clim.file,header=T,as.is=T)
-    dates <- clim.data$Dates
+    era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_ERA_800m_data.csv')
+    era.data <- read.csv(era.file,header=T,as.is=T)
+    dates <- era.data$Dates
 
     coords <- get.coordinates(site)
     lat.bnds <- coords[2]
     course.elevs[i] <- coords[3]
 
     ##Snow Course Data
-    course.file <- paste('/storage/data/projects/rci/data/assessments/snow_model/',site,'_snow_course.csv',sep='')
+    course.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_courses/',site,'_snow_course.csv',sep='')
     course.data <- read.csv(course.file,header=T,as.is=T)
     course.dates <- format(as.Date(course.data[,1]),'%Y-%m-%d')
     course.swe <- course.data[,3] ##mm
@@ -109,20 +120,24 @@ for (i in seq_along(sites)) {
    
     swe.era <- read.csv(paste0(model.dir,site,'.era.swe.1001.csv'),header=T,as.is=T)
     era.swe.mean <- apply(swe.era,1,mean,na.rm=T)
-    swe.ncep2 <- read.csv(paste0(model.dir,site,'.ncep2.swe.1001.csv'),header=T,as.is=T)
+    swe.ncep2 <- read.csv(paste0(model.dir,site,'.ncep2.swe.1001.csv'),header=T,as.is=T)[model.match,]
     ncep2.swe.mean <- apply(swe.ncep2,1,mean,na.rm=T)
 
+    print(length(course.swe[course.subset]))
+    print(dim(swe.era[date.subset,]))
+    print(dim(swe.ncep2[date.subset,]))
     for (j in 1:slen) {
       era.course.mae[i,j] <- mean(abs(course.swe[course.subset]-swe.era[date.subset,j]),na.rm=T)
       ncep2.course.mae[i,j] <- mean(abs(course.swe[course.subset]-swe.ncep2[date.subset,j]),na.rm=T)
     }  
+
 }        
 
 for (i in seq_along(asps)) {
     asp <- asps[i]
  
     ##Reanalysis 800m data
-    clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/',asp,'_ERA_800m_data.csv')
+    clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',asp,'_ERA_800m_data.csv')
     clim.data <- read.csv(clim.file,header=T,as.is=T)
     dates <- clim.data$Dates
 
@@ -131,7 +146,7 @@ for (i in seq_along(asps)) {
     pillow.elevs[i] <- coords[3]
 
     ##Snow Pillow Data
-    pillow.file <- paste('/storage/data/projects/rci/data/assessments/snow_model/snow_pillow/',asp,'_asp.csv',sep='')
+    pillow.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_pillow/',asp,'_asp.csv',sep='')
     pillow.data <- read.csv(pillow.file,header=T,as.is=T)
     pillow.dates <- format(as.Date(pillow.data[,2]),'%Y-%m-%d')
     pillow.swe <- pillow.data[,11] ##mm
@@ -142,6 +157,10 @@ for (i in seq_along(asps)) {
     era.swe.mean <- apply(swe.era,1,mean,na.rm=T)
     swe.ncep2 <- read.csv(paste0(model.dir,asp,'.ncep2.swe.1001.csv'),header=T,as.is=T)
     ncep2.swe.mean <- apply(swe.ncep2,1,mean,na.rm=T)
+
+    print(length(pillow.swe[pillow.subset]))
+    print(dim(swe.era[date.subset,]))
+    print(dim(swe.ncep2[date.subset,]))
  
     for (j in 1:slen) {
       era.pillow.mae[i,j] <- mean(abs(pillow.swe[pillow.subset]-swe.era[date.subset,j]),na.rm=T)
@@ -156,11 +175,11 @@ all.ncep2.mae <- rbind(ncep2.course.mae,ncep2.pillow.mae)
 elevs <- c(course.elevs,pillow.elevs)
 alen <- length(sites)+length(asps)
 ##Loop over sites
-plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/course_comparison/'
+plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/'
 
 leg.title <- 'mm'
 ranked.elevs <- order(elevs)
-png(filename=paste0(plot.dir,'era.ncep2.all.sites.swe.mae.png'),width=1000,height=500)
+png(filename=paste0(plot.dir,'era.ncep2.all.sites.swe.mae.2018.png'),width=1000,height=500)
 par(mar=c(10,5,3,3))
 plot(0:alen,0:alen,xlab='',ylab='MAE (mm)',yaxs='i',
      col='white',main='',cex.axis=1.75,cex.lab=1.75,cex.main=2,
@@ -171,9 +190,10 @@ abline(h=seq(0,1000,200),lty=2,col='gray',lwd=2)
 abline(v=1:alen,col='gray')
 for (j in 1:alen) {
     print(elevs[ranked.elevs[j]])
-    boxplot(at=j-0.175,x=all.era.mae[ranked.elevs[j],],add=TRUE,axes=F,boxwex=0.7,col='blue')
-    boxplot(at=j+0.175,x=all.ncep2.mae[ranked.elevs[j],],add=TRUE,axes=F,boxwex=0.7,col='red')
+    boxplot(at=j-0.175,x=all.era.mae[ranked.elevs[j],],add=TRUE,axes=F,boxwex=0.7,col='blue',border='blue')
+    boxplot(at=j+0.175,x=all.ncep2.mae[ranked.elevs[j],],add=TRUE,axes=F,boxwex=0.7,col='red',border='red')
 }
+legend('topright',leg=c('ERA-I','NCEP2'),col=c('blue','red'),pch=15,cex=1.5)
 
 box(which='plot')
 

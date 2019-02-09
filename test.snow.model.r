@@ -156,7 +156,7 @@ snow.melt <- function(precip_mm, Tmax_C, Tmin_C, Date, lat_deg,slope=0, aspect=0
 		SnowWaterEq[i] <- max(0,SnowWaterEq[i-1]-SnowMelt[i]+NewSnowWatEq[i])	# (m) Equiv depth of water
                 DensityPerc[i] <- SnowWaterEq[i]/SnowDepth[i]*100                
 
-          if (grepl('19988-01-30',Date[i])) {
+          if (grepl('1999-11-01',Date[i])) {
             print(i)
             print(Date[i])
             print(paste('New Snow (cm): ',NewSnow[i]*100,sep=''))
@@ -178,22 +178,23 @@ snow.melt <- function(precip_mm, Tmax_C, Tmin_C, Date, lat_deg,slope=0, aspect=0
             print(paste('Vapour: ',E[i],sep=''))
             print(paste('PrecipHeat: ',P[i],sep=''))
             print(i)
-            s <- i-30
+            s <- i-365
             e <- i
             data <- (cbind(Date[s:e],S[s:e],La[s:e]-Lt[s:e],H[s:e],E[s:e],G,P[s:e]))
 
             par(mfrow=c(3,2))
-            ##plot(as.Date(Date[s:e]),round(precip_mm[s:e],1),type='l',lwd=3,col='blue',main='Precip (mm)',cex.axis=1.5)
-            plot(as.Date(Date[s:e]),Tmax_C[s:e]-Tmin_C[s:e],type='l',lwd=3,col='red',main='Tavg',cex.axis=1.5)
+            plot(as.Date(Date[s:e]),round(cumsum(precip_mm[s:e]),1),type='l',lwd=3,col='blue',main='Precip (mm)',cex.axis=1.5)
+            ##plot(as.Date(Date[s:e]),Tmax_C[s:e]-Tmin_C[s:e],type='l',lwd=3,col='red',main='Tavg',cex.axis=1.5)
             plot(as.Date(Date[s:e]),round(NewSnow[s:e]*100,1),type='l',lwd=3,col='blue',main='New Snow (cm)',cex.axis=1.5)
             plot(as.Date(Date[s:e]),Tav[s:e],type='l',lwd=3,col='red',main='Tavg',cex.axis=1.5)
+            abline(h=0)
             plot(as.Date(Date[s:e]),SnowWaterEq[s:e]*1000,type='l',lwd=3,col='blue',main='SWE (mm)',cex.axis=1.5)
             plot(as.Date(Date[s:e]),SnowMelt[s:e]*100,type='l',lwd=3,col='orange',main='SnowMelt (cm)',cex.axis=1.5)
             a <- barplot(t(data[,2:7]),legend=c('Solar','Longwave','Sensible','Vapour','Ground','Precip'),cex.axis=1.5,
             args.legend=list(x='bottomleft'),col=c('red','orange','yellow','green','blue','purple'))
             axis(1,at=a,label=as.Date(Date[s:e]))
             box(which='plot')
-
+            x11()
             par(mfrow=c(4,2))
             plot(as.Date(Date[s:e]),round(Energy[s:e]-mean(Energy[s:e]),1),type='l',lwd=3,col='red',main='Energy',cex.axis=1.5)
             abline(h=0)

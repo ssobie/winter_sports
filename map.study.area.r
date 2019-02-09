@@ -14,7 +14,7 @@ snow.pillows <- read.csv(paste0(site.dir,'snow_pillow_locations.csv'),header=T,a
 ##---------------------------------------------------------------------------------
 ##Make Plot
 
-plot.file <- '/storage/data/projects/rci/data/winter_sports/plots/study.area.map.png'
+plot.file <- '/storage/data/projects/rci/data/winter_sports/plots/study.area.map.2018.png'
 shape.dir <- '/storage/data/projects/rci/data/winter_sports/study_map/'
 
   plot.window.xlim <- c(-123.6,-120.75)
@@ -22,13 +22,13 @@ shape.dir <- '/storage/data/projects/rci/data/winter_sports/study_map/'
 
   width <- 1000 ##3926
   height <- 800 ##2383
-  png(file=plot.file,width=10,height=7,units='in',res=600,pointsize=6,bg='gray94')
+  png(file=plot.file,width=10,height=7,units='in',res=600,pointsize=6,bg='white')
   par(mar=c(6,6,6,5))
   plot(c(),xlim=plot.window.xlim,ylim=plot.window.ylim,xaxs='i',yaxs='i',
      bg='white',# 'lightgray',
      xlab='Longitude (\u00B0E)',ylab='Latitude (\u00B0N)',main='',
      cex.axis=2.2,cex.lab=2.2,cex.main=2.4,mgp=c(3.5,2,0))
-     rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], col='gray94')
+     rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], col='white')
 
      bc.dir <- '/storage/data/gis/basedata/base_layers/'
      bc.overlay <- 'bc_province_wgs84'

@@ -64,11 +64,8 @@ for (i in seq_along(sites)) {
 
     site <- sites[i]
     print(site)
-    if (site=='spuzzum_creek') {
-    clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_',model,'_800m_data_193_121.csv')
-    } else {
-        clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/',site,'_',model,'_800m_data.csv')
-    }
+    clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_',model,'_800m_data.csv')
+
     clim.data <- read.csv(clim.file,header=T,as.is=T)
     sim.dates <- clim.data$Dates
 
@@ -78,9 +75,9 @@ for (i in seq_along(sites)) {
     pillow.ends <- as.numeric(format(as.Date(season.dates$End),'%j'))
     pillow.lengths <- as.numeric(season.dates$Length)
 
-    pack.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/',site,'.',tolower(model),'.snow.1001.csv')
+    pack.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/',site,'.',tolower(model),'.snow.1001.csv')
     pack.sims <- read.csv(pack.file,header=T,as.is=T)
-    swe.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/',site,'.',tolower(model),'.swe.1001.csv')
+    swe.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/',site,'.',tolower(model),'.swe.1001.csv')
     swe.sims <- read.csv(swe.file,header=T,as.is=T)
 
     sim.years <- unique(format(as.Date(sim.dates),'%Y'))

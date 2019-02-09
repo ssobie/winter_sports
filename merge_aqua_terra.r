@@ -8,7 +8,7 @@ aqua.dir <- '/storage/data/projects/rci/data/winter_sports/MODIS_AQUA_NETCDF/'
 terra.dir <- '/storage/data/projects/rci/data/winter_sports/MODIS_TERRA_NETCDF/'
 
 
-year.dates <- seq(from=as.Date('2002-01-01'),by='month',to=as.Date('2015-12-31'))
+year.dates <- seq(from=as.Date('2018-01-01'),by='month',to=as.Date('2018-12-31'))
 
 yrs <- format(year.dates,'%Y')
 mns <- format(year.dates,'%m')
@@ -18,10 +18,11 @@ dates <- paste0(yrs,mns)
 prefix <- 'snc.modis.terra.'
 
 for (i in seq_along(dates)) {
-
+  print(dates[i])
   aqua.file <- list.files(path=aqua.dir,pattern=dates[i],full.name=TRUE)
   terra.file <- list.files(path=terra.dir,pattern=dates[i],full.name=TRUE)
   merged.file <- gsub(pattern='terra',replacement='merged',list.files(path=terra.dir,pattern=dates[i]))
+
   copy.terra <- paste0('cp ',terra.file,' /storage/data/projects/rci/data/winter_sports/MODIS_MERGED/',merged.file)
   system(copy.terra)
 

@@ -6,7 +6,7 @@ library(ncdf4)
 
 modis.dir <- '/storage/data/projects/rci/data/winter_sports/MODIS_MERGED'
 
-year.dates <- seq(from=as.Date('2001-01-01'),by='month',to=as.Date('2015-12-31'))
+year.dates <- seq(from=as.Date('2016-01-01'),by='month',to=as.Date('2018-12-31'))
 
 yrs <- format(year.dates,'%Y')
 mns <- format(year.dates,'%m')

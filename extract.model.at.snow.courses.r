@@ -41,20 +41,19 @@ get.800m.data <- function(site, pr.nc,tasmax.nc,tasmin.nc) {
   lat.bnds <- coords[2]
   elev <- coords[3]
 
-  lon.ix <- 196 ##which.min(abs(lon-lon.bnds)) ##192, 61
-  lat.ix <- 55 ##which.min(abs(lat-lat.bnds))
+  lon.ix <- which.min(abs(lon-lon.bnds)) ##196 ####192, 61
+  lat.ix <- which.min(abs(lat-lat.bnds)) ##55 ##
   print(lon.ix)
   print(lon[lon.ix])
   print(lat.ix)
   print(lat[lat.ix])
 
+
   pr.data <- ncvar_get(pr.nc,'pr',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
   tasmax.data <- ncvar_get(tasmax.nc,'tasmax',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
   tasmin.data <- ncvar_get(tasmin.nc,'tasmin',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
-
   flag <- which(tasmax.data<tasmin.data)
   tasmax.data[flag] <- tasmin.data[flag]+1.1
-
   tas.data <- (tasmax.data+tasmin.data)/2
 
   rv <- list(pr=pr.data,
@@ -83,13 +82,15 @@ get.800m.data <- function(site, pr.nc,tasmax.nc,tasmin.nc) {
              'upper_squamish',
              'wahleach_lake',             
              'tenquille_lake')
-sites <- 'chilliwack_river'
-base.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/'
-model <- 'NCEP2'
+##sites <- 'spuzzum_creek'
 
-pr.file <- paste0('pr_gcm_prism_',model,'_1979-2016.nc')
-tasmax.file <- paste0('tasmax_gcm_prism_',model,'_1979-2016.nc')
-tasmin.file <- paste0('tasmin_gcm_prism_',model,'_1979-2016.nc')
+base.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/'
+
+model <- 'ERA'
+
+pr.file <- paste0('pr_gcm_prism_',model,'_19790101-20181031.nc')
+tasmax.file <- paste0('tasmax_gcm_prism_',model,'_19790101-20181031.nc')
+tasmin.file <- paste0('tasmin_gcm_prism_',model,'_19790101-20181031.nc')
 
 pr.nc <- nc_open(paste(base.dir,model,'/',pr.file,sep=''))
 tasmax.nc <- nc_open(paste(base.dir,model,'/',tasmax.file,sep=''))
@@ -103,7 +104,7 @@ dates <- netcdf.calendar(pr.nc)
     output <- cbind(as.character(dates),round(cbind(clim.data$pr,clim.data$tasmax,
                                clim.data$tasmin,clim.data$tas),2))
     output <- rbind(c('Dates','Pr','Tasmax','Tasmin','Tas'),output)
-    write.table(output,file=paste('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_',model,'_800m_data_196_55.csv',sep=''),
+    write.table(output,file=paste('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_',model,'_800m_data.csv',sep=''),
                 sep=',',row.name=FALSE,col.name=FALSE,quote=FALSE)
 
   }

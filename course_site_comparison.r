@@ -3,7 +3,7 @@
 library(ncdf4)
 library(plotrix)
 
-source('/storage/home/ssobie/code/repos/winter_sports/test.snow.model.r',chdir=T)
+##source('/storage/home/ssobie/code/repos/winter_sports/test.snow.model.r',chdir=T)
 
 get.coordinates <- function(site) {
 
@@ -95,20 +95,25 @@ course.site.swe <- vector(mode='list',length=length(sites))
 model.site.swe <- vector(mode='list',length=length(sites))
 
 slen <- 1001
-swe.sims <- matrix(0,nrow=slen,ncol=13696)
-snow.sims <- matrix(0,nrow=slen,ncol=13696)
+
+model.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/grouse_mountain_',model,'_800m_data.csv')
+model.data <- read.csv(model.file,header=T,as.is=T)
+
+swe.sims <- matrix(0,nrow=slen,ncol=dim(model.data)[1])
+snow.sims <- matrix(0,nrow=slen,ncol=dim(model.data)[1])
+
 
 ##Loop over sites
-model.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/'
+model.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/'
 plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/course_comparison/'
-png(file=paste0(plot.dir,model,'.subset.sites.swe.comparison.png'),width=1400,height=1000)
+png(file=paste0(plot.dir,model,'.subset.sites.swe.comparison.2018.png'),width=1400,height=1000)
 par(mfrow=c(3,2))    
 
 for (i in seq_along(sites)) {
     site <- sites[i]
     print(site)
     ##Reanalysis 800m data
-    clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/',site,'_',model,'_800m_data.csv')
+    clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_',model,'_800m_data.csv')
     clim.data <- read.csv(clim.file,header=T,as.is=T)
     pr.data <- clim.data$Pr
     tasmax.data <- clim.data$Tasmax
@@ -123,7 +128,8 @@ for (i in seq_along(sites)) {
     site.aspect <- bc.aspects[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]    
 
     ##Snow Course Data
-    course.file <- paste('/storage/data/projects/rci/data/assessments/snow_model/',site,'_snow_course.csv',sep='')
+    course.file <- paste0('/storage/data/projects/rci/data/winter_sports/obs/snow_courses/',site,'_snow_course.csv',sep='')
+    ##course.file <- paste('/storage/data/projects/rci/data/assessments/snow_model)
     course.data <- read.csv(course.file,header=T,as.is=T)
     course.dates <- format(as.Date(course.data[,1]),'%Y-%m-%d')
     course.swe <- course.data[,3] ##mm
@@ -140,8 +146,8 @@ for (i in seq_along(sites)) {
     ###for (j in 1:slen) {
     ###  all.ae[j] <- mean(abs(course.swe[course.subset]-swe.sims[date.subset,j]),na.rm=T)
     ###}  
-    print(range(all.ae))
-    print(mean(all.ae))
+    ##print(range(all.ae))
+    ##print(mean(all.ae))
 
 ##Snow Course Comparison
     yupp <- max(c(max(course.swe,na.rm=T),max(swe.sims),1000))
@@ -149,14 +155,14 @@ for (i in seq_along(sites)) {
 
     par(mar=c(5.1,5,2.1,2.1))
     plot(as.Date(course.dates)[sb],course.swe[sb],cex=1.5,col='black',pch=16,
-             xlim=c(as.Date('1981-01-01'),as.Date('2014-12-31')),ylim=c(0,ymax),
+             xlim=c(as.Date('1981-01-01'),as.Date('2017-04-30')),ylim=c(0,ymax),
              main='',xlab='Date',ylab='SWE (mm)', cex.lab=1.95,axes=F)
-    axis(1,at=as.Date(c('1980-01-01','1990-01-01','2000-01-01','2010-01-01')),labe=c('1980','1990','2000','2010'),cex.axis=1.95)
+    axis(1,at=as.Date(c('1980-01-01','1990-01-01','2000-01-01','2010-01-01')),label=c('1980','1990','2000','2010'),cex.axis=1.95)
     axis(2,at=seq(0,yupp,round((yupp-100)/3,-2)),label=seq(0,yupp,round((yupp-100)/3,-2)),cex.axis=1.95)
     apply(swe.sims,2,function(x,y){lines(y,x,col='lightblue',lwd=2)},as.Date(dates))
     lines(as.Date(dates),swe.mean,lwd=3,col='blue')
     points(as.Date(course.dates),course.swe,cex=1.75,col='black',pch=16)
-    text(as.Date('2012-01-01'),0.95*ymax,site.names[i],cex=2)
+    text(as.Date('2015-01-01'),0.95*ymax,site.names[i],cex=2)
     if (i==2) {
        legend('topleft',legend=c('Course Obs.','Model','Model Mean'),col=c('black','lightblue','blue'),pch=16,cex=1.75)
     }

@@ -60,7 +60,7 @@ lons <- rep(0,slen)
 ##---------------------------------------------------------------------------------
 ##MODIS 
 modis.dir <- '/storage/data/projects/rci/data/winter_sports/MODIS_VAN_WHISTLER/'
-snc.file <- paste0(modis.dir,'snc.modis.van_whistler.20010101-20151231.nc')
+snc.file <- paste0(modis.dir,'snc.modis.van_whistler.20010101-20181231.nc')
 snc.nc <- nc_open(snc.file)
 m.lon <- ncvar_get(snc.nc,'lon')
 m.lat <- ncvar_get(snc.nc,'lat')
@@ -68,26 +68,40 @@ modis.time <- netcdf.calendar(snc.nc)
 
 ##---------------------------------------------------------------------------------
 ##SNOW MODEL from Simulations
-snow.time.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/',model,'/')
-snw.time.file <- paste0(snow.time.dir,'snowdepth_BCCAQ-PRISM_',model,'_rcp85_r1_1979-2016.nc')
-snw.nc <- nc_open(snw.time.file)
-s.lon <- ncvar_get(snw.nc,'lon')
-s.lat <- ncvar_get(snw.nc,'lat')
-snow.time <- netcdf.calendar(snw.nc)
+snow.time.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/')
+esnw.time.file <- paste0(snow.time.dir,'snowdepth_BCCAQ2-PRISM_ERA_19790101-20181031.nc')
+esnw.nc <- nc_open(esnw.time.file)
+s.lon <- ncvar_get(esnw.nc,'lon')
+s.lat <- ncvar_get(esnw.nc,'lat')
+era.time <- netcdf.calendar(esnw.nc)
+
+nsnw.time.file <- paste0(snow.time.dir,'snowdepth_BCCAQ2-PRISM_NCEP2_19790101-20181031.nc')
+nsnw.nc <- nc_open(nsnw.time.file)
+s.lon <- ncvar_get(nsnw.nc,'lon')
+s.lat <- ncvar_get(nsnw.nc,'lat')
+ncep2.time <- netcdf.calendar(nsnw.nc)
+
+ncep2.match <- format(ncep2.time,'%Y-%m-%d') %in% format(era.time,'%Y-%m-%d')
+
+
+
 
 ##---------------------------------------------------------------------------------
 
-date.match <- format(snow.time,'%Y-%m-%d') %in% format(modis.time,'%Y-%m-%d')
+date.match <- format(era.time,'%Y-%m-%d') %in% format(modis.time,'%Y-%m-%d')
+modis.match <- format(modis.time,'%Y-%m-%d') %in% format(era.time,'%Y-%m-%d')
+
 bnds <- range(which(date.match))
 
 for (i in 1:slen) {
   site <- sites[i]
-  snow.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/')
+  snow.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/')
   era.file <- paste0(snow.dir,site,'.era.snow.1001.csv')
-  era.sims <- read.csv(era.file,header=TRUE,as.is=TRUE)
+  era.sims <- as.matrix(read.csv(era.file,header=TRUE,as.is=TRUE))
 
   ncep2.file <- paste0(snow.dir,site,'.ncep2.snow.1001.csv')
-  ncep2.sims <- read.csv(ncep2.file,header=TRUE,as.is=TRUE)
+  ncep2.sims <- as.matrix(read.csv(ncep2.file,header=TRUE,as.is=TRUE))[ncep2.match,]
+
 
   print(site)
   coords <- get.coordinates(site)
@@ -100,7 +114,9 @@ for (i in 1:slen) {
   s.ox <- which.min(abs(coords[1]-s.lon))
   s.ax <- which.min(abs(coords[2]-s.lat))
 
-  snc.data <- ncvar_get(snc.nc,'snc',start=c(m.ox,m.ax,1),count=c(1,1,-1))
+  snc.data <- ncvar_get(snc.nc,'snc',start=c(m.ox,m.ax,1),count=c(1,1,-1))[modis.match]
+
+
   snc.modis <- snc.data
   snc.modis[snc.modis > 0 & snc.modis <=100] <- 1
   snc.modis[snc.modis > 100] <- NA
@@ -123,6 +139,7 @@ for (i in 1:slen) {
   ##ncep2.cover.diff[[i]] <- apply(ncep2.diff,2,function(x){round(sum(x==0,na.rm=T)/sum(!is.na(x))*100,1)})
 
   ##For snow only
+
   flag <- is.na(snc.matrix)
   era.snow <- era.cover
   ncep2.snow <- ncep2.cover 
@@ -146,7 +163,8 @@ for (i in 1:slen) {
 }
 
 nc_close(snc.nc)
-nc_close(snw.nc)
+nc_close(nsnw.nc)
+nc_close(esnw.nc)
 
 
 ##Model Total Snow Cover
@@ -178,7 +196,7 @@ dev.off()
 
 ##MODIS Total Snow Days
 if (1==1) {
-plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/',model,'.total.snow.days.prct.at.sites.1001.png')
+plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/',model,'.total.snow.days.prct.at.sites.1001.2018.png')
 plot.title <- '' ##paste0('Total Snow Days')
 leg.title <- 'Days'
 ranked.elevs <- order(elevs)
@@ -187,18 +205,19 @@ png(filename=plot.file,width=1000,height=500)
 par(mar=c(10,5,3,3))
 plot(0:slen,0:slen,xlab='',ylab='Snow Days',yaxs='i',
      col='white',main=plot.title,cex.axis=1.75,cex.lab=1.75,cex.main=2,
-     xlim=c(1,slen),ylim=c(200,900),axes=FALSE)        
+     xlim=c(1,slen),ylim=c(200,1100),axes=FALSE)        
 axis(1,at=1:slen,site.names[ranked.elevs],cex=1.75,cex.axis=1.75,las=2)                                                        
-axis(2,at=seq(200,900,100),seq(200,900,100),cex=1.75,cex.axis=1.75)                                                        
-abline(h=seq(200,900,100),lty=2,col='gray',lwd=2)
+axis(2,at=seq(200,1200,100),seq(200,1200,100),cex=1.75,cex.axis=1.75)                                                        
+abline(h=seq(200,1200,100),lty=2,col='gray',lwd=2)
 abline(v=1:slen,col='gray')
 for (j in 1:slen) {
     print(elevs[ranked.elevs[j]])
-    boxplot(at=j-0.175,x=era.snow.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.7,col='blue')
-    boxplot(at=j+0.175,x=ncep2.snow.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.7,col='red')
+    boxplot(at=j-0.175,x=era.snow.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.7,col='blue',border='blue')
+    boxplot(at=j+0.175,x=ncep2.snow.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.7,col='red',border='red')
     points(x=j,y=modis.snow.days[[ranked.elevs[j]]],pch='-',cex=5,col='black')
 }
 
+legend('topleft',leg=c('MODIS','ERA-I','NCEP2'),col=c('black','blue','red'),pch=15,cex=1.5)
 box(which='plot')
 dev.off()
 

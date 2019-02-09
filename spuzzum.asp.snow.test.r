@@ -1,8 +1,13 @@
 ##Script to compare snowdepth, SWE and snow cover between modelled values, 
 ##snow course sites and MODIS snow cover
+
+##Rprof('profile.snow.model.out')
+
 library(ncdf4)
 library(plotrix)
+library(zoo)
 
+##source('/storage/home/ssobie/code/repos/winter_sports/snow.model.functional.r',chdir=T)
 source('/storage/home/ssobie/code/repos/winter_sports/test.snow.model.r',chdir=T)
 
 get.coordinates <- function(site) {
@@ -37,7 +42,7 @@ hyper.snow <- function(pr,tasmax,tasmin,coeffs) {
         frac <- coeffs$a*(tanh(coeffs$b*(tas-coeffs$c))-coeffs$d)
         sample <- runif(length(tas),min=0,max=100)
         test <- sample > frac        
-        high.temp <- tas > 12
+        high.temp <- tas > 7
         test[high.temp] <- TRUE
         snow.type <- rep(TRUE,length(tas))
         snow.type[test] <- FALSE
@@ -64,49 +69,27 @@ aspects.nc <- nc_open(paste0(as.dir,'prism_aspects.nc'))
 bc.aspects <- ncvar_get(aspects.nc,'Band1')/360*2*pi
 nc_close(aspects.nc)
 
-slen <- 1001
+slen <- 21
 save.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/'
 
-ncep2.swe.sims <- matrix(0,nrow=13696,ncol=slen)
-ncep2.snow.sims <- matrix(0,nrow=13696,ncol=slen)
+##ncep2.swe.sims <- matrix(0,nrow=13696,ncol=slen)
+##ncep2.snow.sims <- matrix(0,nrow=13696,ncol=slen)
 
-era.swe.sims <- matrix(0,nrow=13819,ncol=slen)
-era.snow.sims <- matrix(0,nrow=13819,ncol=slen)
+era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/spuzzum_creek_ERA_800m_data.csv')
+era.data <- read.csv(era.file,header=T,as.is=T)
 
+era.swe.sims <- matrix(0,nrow=dim(era.data)[1],ncol=slen)
+era.snow.sims <- matrix(0,nrow=dim(era.data)[1],ncol=slen)
 
-sites <- c('shovelnose_mountain',
-           'brookmere',
-           'lightning_lake',
-           'callaghan',
-           'orchid_lake',
-           'palisade_lake',
-           'grouse_mountain',
-           'dog_mountain',
-           'stave_lake',
-           'nahatlatch',
-           'wahleach',
-           'klesilkwa',
-           'hamilton_hill',
-           'chilliwack_river',
-           'upper_squamish',
-           'tenquille_lake',
-           'spuzzum_creek')
-
-##sites <- c('klesilkwa',
-##           'hamilton_hill')
-
-##sites <- c('chilliwack_river',
-##           'upper_squamish',
-##           'tenquille_lake')
-##sites <- 'spuzzum_creek'
-
+sites <- 'spuzzum_creek'
 
 for (i in seq_along(sites)) {
     site <- sites[i]
     print(site)
     ##Reanalysis 800m data
-    ##ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_NCEP2_800m_data.csv')
-    ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_NCEP2_800m_data.csv')
+    ##ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_NCEP2_800m_data_193_121.csv')
+if (1==0) {
+    ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/',site,'_NCEP2_800m_data.csv')
 
     ncep2.data <- read.csv(ncep2.file,header=T,as.is=T)
     ncep2.pr <- ncep2.data$Pr
@@ -114,8 +97,7 @@ for (i in seq_along(sites)) {
     ncep2.tasmin <- ncep2.data$Tasmin
     ncep2.tas <- ncep2.data$Tas
     ncep2.dates <- ncep2.data$Dates
-
-    ##era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_ERA_800m_data_193_121.csv')
+}
     era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_ERA_800m_data.csv')
     era.data <- read.csv(era.file,header=T,as.is=T)
     era.pr <- era.data$Pr
@@ -123,6 +105,19 @@ for (i in seq_along(sites)) {
     era.tasmin <- era.data$Tasmin
     era.tas <- era.data$Tas
     era.dates <- era.data$Dates
+
+    ##Snow Pillow Data
+    pillow.file <- paste('/storage/data/projects/rci/data/assessments/snow_model/snow_pillow/',site,'_asp.csv',sep='')
+    pillow.data <- read.csv(pillow.file,header=T,as.is=T)
+    pillow.dates <- format(as.Date(pillow.data[,2]),'%Y-%m-%d')
+    pillow.tasmax <- pillow.data[,3]
+    pillow.tasmin <- pillow.data[,5]
+    pillow.tas <- (pillow.tasmax + pillow.tasmin)/2
+    pillow.precip <- pillow.data[,7]##mm
+    pillow.swe <- pillow.data[,11] ##mm
+    pillow.pack <- pillow.data[,13] ##cm
+
+
 
     coords <- get.coordinates(site)
     lat.bnds <- coords[2]
@@ -136,13 +131,14 @@ for (i in seq_along(sites)) {
 
     for (k in 1:slen) {
     print(k)
+if (1==0) {
     ##ncep2.snow <- hyper.snow(ncep2.pr,ncep2.tasmax,ncep2.tasmin,coeffs)
     ncep2.results <- snow.melt(Date=ncep2.dates, precip_mm=ncep2.pr, Tmax_C=ncep2.tasmax, Tmin_C=ncep2.tasmin,
                          lat_deg=lat.bnds, slope=site.slope, aspect=site.aspect, tempHt=1, windHt=2, groundAlbedo=0.25,
                          SurfEmissiv=0.95, windSp=1, forest=0, startingSnowDepth_m=0, startingSnowDensity_kg_m3=600)
     ncep2.swe.sims[,k] <- ncep2.results$swe
     ncep2.snow.sims[,k] <- ncep2.results$snowdepth
-
+}
     ##era.snow <- hyper.snow(era.pr,era.tasmax,era.tasmin,coeffs)
     era.results <- snow.melt(Date=era.dates, precip_mm=era.pr, Tmax_C=era.tasmax, Tmin_C=era.tasmin,
                          lat_deg=lat.bnds, slope=site.slope, aspect=site.aspect, tempHt=1, windHt=2, groundAlbedo=0.25,
@@ -150,10 +146,13 @@ for (i in seq_along(sites)) {
     era.swe.sims[,k] <- era.results$swe
     era.snow.sims[,k] <- era.results$snowdepth
 
-    }                                      
+##    Rprof(NULL)
 
-    write.table(rbind(1:slen,round(ncep2.swe.sims*1000,1)),file=paste0(save.dir,site,'.ncep2.swe.',slen,'.csv'),sep=',',row.name=F,col.name=F,quote=F)
-    write.table(rbind(1:slen,round(ncep2.snow.sims*100,1)),file=paste0(save.dir,site,'.ncep2.snow.',slen,'.csv'),sep=',',row.name=F,col.name=F,quote=F)
+
+    }                                      
+    browser()
+##    write.table(rbind(1:slen,round(ncep2.swe.sims*1000,1)),file=paste0(save.dir,site,'.ncep2.swe.',slen,'.csv'),sep=',',row.name=F,col.name=F,quote=F)
+##    write.table(rbind(1:slen,round(ncep2.snow.sims*100,1)),file=paste0(save.dir,site,'.ncep2.snow.',slen,'.csv'),sep=',',row.name=F,col.name=F,quote=F)
 
     write.table(rbind(1:slen,round(era.swe.sims*1000,1)),file=paste0(save.dir,site,'.era.swe.',slen,'.csv'),sep=',',row.name=F,col.name=F,quote=F)
     write.table(rbind(1:slen,round(era.snow.sims*100,1)),file=paste0(save.dir,site,'.era.snow.',slen,'.csv'),sep=',',row.name=F,col.name=F,quote=F)
