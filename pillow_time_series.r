@@ -2,8 +2,10 @@
 ##snow course sites and MODIS snow cover
 library(ncdf4)
 library(plotrix)
+library(scales)
 
 source('/storage/home/ssobie/code/repos/winter_sports/test.snow.model.r',chdir=T)
+source('/storage/data/projects/rci/stat.downscaling/bccaq2/code/new.netcdf.calendar.R',chdir=T)
 
 get.coordinates <- function(site) {
 
@@ -91,6 +93,20 @@ for (i in seq_along(sites)) {
     print(cor(sims.na,asp.na))
 
 
+    ##SNODAS Cell
+    snodas.dir <- '/storage/data/projects/rci/data/winter_sports/obs/SNODAS/ncdf4_files/'    
+    snodas.file <- 'swe_snodas_modis_grid_van_whistler_20100101-20181231.nc'
+    snc <- nc_open(paste0(snodas.dir,snodas.file))
+    lon <- ncvar_get(snc,'lon')
+    lat <- ncvar_get(snc,'lat')    
+    lon.ix <- which.min(abs(coords[1]-lon))
+    lat.ix <- which.min(abs(coords[2]-lat))
+
+    snodas.dates <- as.character(netcdf.calendar(snc))
+
+    snodas.swe <- ncvar_get(snc,'swe',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
+    nc_close(snc)    
+
     ##Normalized Series
     if (1==0) {
       par(mar=c(4,6,2,2))
@@ -122,11 +138,12 @@ for (i in seq_along(sites)) {
            type='l',lwd=3,col='blue',main='',cex.axis=1.75,cex.lab=1.75,cex.main=2,xaxs='i',
            xlim=c(as.Date('1992-08-01'),as.Date('2018-08-01')),ylim=c(0,3000))
       apply(swe.sims[date.subset,],2,function(x,y){lines(y,x,col='lightblue',lwd=2.5)},as.Date(dates[date.subset]))
+      points(as.Date(snodas.dates),snodas.swe,col=alpha('red',0.5),lwd=1)
       points(as.Date(pillow.dates),pillow.swe,pch=16,col='black')
       lines(as.Date(dates[date.subset]),apply(swe.sims,1,mean)[date.subset],col='blue',lwd=3.5)
       text(as.Date('1995-01-01'),2500,site.names[i],cex=2.5)
       if (i==4) { 
-         legend('bottomleft',legend=c('ASP Obs.',model,paste0(model,' Mean')),col=c('black','lightblue','blue'),pch=16,cex=1.75)
+         legend('bottomleft',legend=c('ASP Obs.','SNODAS',model,paste0(model,' Mean')),col=c('black','red','lightblue','blue'),pch=16,cex=1.75)
       }
     }
 

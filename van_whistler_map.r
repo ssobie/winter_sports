@@ -27,7 +27,7 @@ vw.plot <- function(raster.object,
 
   width <- 1400
   height <- 900
-  ##png(file=plot.file,width=width,height=height,bg='gray94')
+  png(file=plot.file,width=width,height=height,bg='white')
   par(mar=c(6,6,6,5))
   plot(c(),xlim=plot.window.xlim,ylim=plot.window.ylim,xaxs='i',yaxs='i',
      bg='white',# 'lightgray',
@@ -67,6 +67,6 @@ vw.plot <- function(raster.object,
      legend('topright', col = "black", legend=rev(map.class.breaks.labels), pch=22, pt.bg = rev(colour.ramp), 
          pt.cex=2.0, y.intersp=0.8, title.adj=0.2, title=leg.title, xjust=0, cex=1.9)
      box(which='plot',lwd=3)
- ##    dev.off()
+     dev.off()
 }
 

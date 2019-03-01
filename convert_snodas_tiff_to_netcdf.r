@@ -7,10 +7,10 @@ library(ncdf4)
 ##Function to create month file
 
 make.month.file <- function(var.name,
-                            proj.dir,write.dir,
+                            proj.dir,write.dir,tmp.dir,
                             start.date,end.date) {
 
-  write.file <- paste0(write.dir,var.name,'_snodas_unmasked_',gsub('-','',start.date),'-',gsub('-','',end.date),'.nc')
+  write.file <- paste0(var.name,'_snodas_unmasked_',gsub('-','',start.date),'-',gsub('-','',end.date),'.nc')
 
   dates <- seq(from=as.Date(start.date),by='day',to=as.Date(end.date))
   dates.under <- gsub('-','',dates)
@@ -21,6 +21,10 @@ make.month.file <- function(var.name,
 
   year.files <- all.files[grep(paste0(yr,mn,'[0-9]{2}.tif'),all.files)]
 
+  file.copy(from=paste0(proj.dir,year.files),to=tmp.dir,overwrite=TRUE)
+
+
+
   r.list <- vector(mode='list',length=length(files))
 
   flags <- files %in% year.files
@@ -30,7 +34,7 @@ make.month.file <- function(var.name,
 
   for (i in seq_along(flags.ix)) {
     ix <- flags.ix[i]
-    r.list[[ix]] <- raster(paste0(proj.dir,year.files[i]))
+    r.list[[ix]] <- raster(paste0(tmp.dir,year.files[i]))
   }
 
   filling.file <- paste0(proj.dir,toupper(var.name),'_SNODAS_UNMASKED_DOMAIN_20100101.tif')
@@ -61,7 +65,8 @@ make.month.file <- function(var.name,
   time.vals <- dates - as.Date('1950-01-01')
   time.calendar <- 'gregorian'
 
-  browser()
+##  browser()
+
   ##--------------------------------------------------------------
   ##Create new netcdf file
   x.geog <- ncdim_def('lon', 'degrees_east', lon)
@@ -71,21 +76,34 @@ make.month.file <- function(var.name,
 
   var.geog <- ncvar_def(var.name, units='mm', dim=list(x.geog, y.geog, t.geog),
                         missval=-32768)
-  file.nc <- nc_create(write.file, var.geog)
+  file.nc <- nc_create(paste0(tmp.dir,write.file), var.geog)
 
-  ncvar_put(file.nc,varid=var.name,vals=r.flip,
-                    start=c(1,1,1),count=c(-1,-1,-1))
-
+  nlen <- dim(r.flip)[3]
+  for (j in 1:nlen) {
+    print(paste0('Writing step: ',j,' of ',nlen))
+    ncvar_put(file.nc,varid=var.name,vals=r.flip[,,j],
+                      start=c(1,1,j),count=c(-1,-1,1))
+    gc()
+  }
   nc_close(file.nc)
-browser()
+
+  file.copy(from=paste0(tmp.dir,write.file),to=write.dir,overwrite=TRUE)
+
+  file.remove(paste0(tmp.dir,year.files))
+  file.remove(paste0(tmp.dir,write.file))
 }
 
 var.name <- 'swe'
 
 proj.dir <- '/storage/data/projects/rci/data/winter_sports/obs/SNODAS/tif_files/'
 write.dir <- '/storage/data/projects/rci/data/winter_sports/obs/SNODAS/ncdf4_files/'
+tmp.dir <- '/local_temp/ssobie/snodas/'
 
-yr <- '2010'
+if (!file.exists(tmp.dir)) {
+  dir.create(tmp.dir,recursive=TRUE)
+}
+
+yr <- '2017'
 year.dates <- seq(from=as.Date(paste0(yr,'-01-01')),by='day',to=as.Date(paste0(yr,'-12-31')))
 months <- sprintf('%02d',1:12)
 
@@ -96,6 +114,6 @@ for (m in seq_along(months)) {
   end.date   <- tail(year.dates[m.ix],1)
 
   make.month.file(var.name,
-                  proj.dir,write.dir,
+                  proj.dir,write.dir,tmp.dir,
                   start.date,end.date)
 }

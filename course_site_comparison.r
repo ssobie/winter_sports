@@ -2,6 +2,7 @@
 ##snow course sites and MODIS snow cover
 library(ncdf4)
 library(plotrix)
+source('/storage/data/projects/rci/stat.downscaling/bccaq2/code/new.netcdf.calendar.R',chdir=T)
 
 ##source('/storage/home/ssobie/code/repos/winter_sports/test.snow.model.r',chdir=T)
 
@@ -77,6 +78,7 @@ sites <- c('callaghan',
            'shovelnose_mountain',
            'hamilton_hill')
 
+
 sites <- c('callaghan',
            'palisade_lake',
            'stave_lake',
@@ -86,7 +88,67 @@ sites <- c('callaghan',
 
 site.names <- c('Callaghan','Palisade Lake',
                 'Stave Lake','Nahatlatch',
-                'Wahleach','Brookmere')
+                'Klesilkwa','Brookmere')
+
+
+sites <- c('orchid_lake',           
+           'grouse_mountain',
+           'dog_mountain',                      
+           'wahleach',           
+           'lightning_lake',           
+           'shovelnose_mountain',
+           'hamilton_hill')
+
+site.names <- c('Orchid Lake','Grouse Mountain',
+                'Dog Mountain','Wahleach',
+                'Lightning Lake','Shovelnose Mountain',
+                'Hamilton Hill')
+
+
+
+##North Eastern Sites
+sites <- c('brookmere',
+           'shovelnose_mountain',
+           'hamilton_hill')
+           
+site.names <- c('Brookmere',
+                'Shovelnose Mountain',
+                'Hamilton Hill')
+
+##South Eastern Sites                
+sites <- c('lightning_lake',
+           'klesilkwa',
+           'wahleach')
+
+site.names <- c('Lightning Lake',
+                'Klesilkwa',
+                'Wahleach')
+
+##Central Sites
+sites <- c('callaghan',
+           'stave_lake',
+           'nahatlatch')
+
+site.names <- c('Callaghan',
+                'Stave Lake',
+                'Nahatlatch')
+
+##North Shore Sites
+sites <- c('orchid_lake',           
+           'grouse_mountain',
+           'dog_mountain',
+           'palisade_lake')                      
+site.names <- c('Orchid Lake','Grouse Mountain',
+                'Dog Mountain','Palisade Lake')
+
+##Selected
+sites <- c('grouse_mountain',
+           'nahatlatch',
+           'brookmere')
+
+site.names <- c('Grouse Mmountain',
+           'Nahatlatch',
+           'Brookmere')
 
 
 model <- 'ERA'
@@ -106,8 +168,9 @@ snow.sims <- matrix(0,nrow=slen,ncol=dim(model.data)[1])
 ##Loop over sites
 model.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/'
 plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/course_comparison/'
-png(file=paste0(plot.dir,model,'.subset.sites.swe.comparison.2018.png'),width=1400,height=1000)
-par(mfrow=c(3,2))    
+##png(file=paste0(plot.dir,model,'.subset.sites.swe.comparison.2018.png'),width=1400,height=1000)
+png(file=paste0(plot.dir,model,'.selected.sites.swe.comparison.2018.png'),width=1000,height=1000)
+par(mfrow=c(3,1))    
 
 for (i in seq_along(sites)) {
     site <- sites[i]
@@ -141,6 +204,22 @@ for (i in seq_along(sites)) {
 
     swe.sims <- read.csv(paste0(model.dir,site,'.',tolower(model),'.swe.1001.csv'),header=T,as.is=T)
     swe.mean <- apply(swe.sims,1,mean,na.rm=T)
+
+    ##SNODAS Cell
+    snodas.dir <- '/storage/data/projects/rci/data/winter_sports/obs/SNODAS/ncdf4_files/'
+    snodas.file <- 'swe_snodas_modis_grid_van_whistler_20100101-20181231.nc'
+    snc <- nc_open(paste0(snodas.dir,snodas.file))
+    lon <- ncvar_get(snc,'lon')
+    lat <- ncvar_get(snc,'lat')
+    lon.ix <- which.min(abs(coords[1]-lon))
+    lat.ix <- which.min(abs(coords[2]-lat))
+    if (grepl('(palisade_lake|wahleach)',site))
+       lat.ix <- lat.ix+1
+
+    snodas.dates <- as.character(netcdf.calendar(snc))
+    snodas.swe <- ncvar_get(snc,'swe',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
+    nc_close(snc)
+
  
     ###all.ae <- rep(0,slen)
     ###for (j in 1:slen) {
@@ -150,8 +229,8 @@ for (i in seq_along(sites)) {
     ##print(mean(all.ae))
 
 ##Snow Course Comparison
-    yupp <- max(c(max(course.swe,na.rm=T),max(swe.sims),1000))
-    ymax <- max(c(max(course.swe,na.rm=T),max(swe.sims)))
+    yupp <- max(c(max(course.swe,na.rm=T),max(swe.sims),max(snodas.swe,na.rm=T),1000))
+    ymax <- max(c(max(course.swe,na.rm=T),max(swe.sims),max(snodas.swe,na.rm=T)))
 
     par(mar=c(5.1,5,2.1,2.1))
     plot(as.Date(course.dates)[sb],course.swe[sb],cex=1.5,col='black',pch=16,
@@ -161,10 +240,11 @@ for (i in seq_along(sites)) {
     axis(2,at=seq(0,yupp,round((yupp-100)/3,-2)),label=seq(0,yupp,round((yupp-100)/3,-2)),cex.axis=1.95)
     apply(swe.sims,2,function(x,y){lines(y,x,col='lightblue',lwd=2)},as.Date(dates))
     lines(as.Date(dates),swe.mean,lwd=3,col='blue')
+    lines(as.Date(snodas.dates),snodas.swe,lwd=2,col='red')
     points(as.Date(course.dates),course.swe,cex=1.75,col='black',pch=16)
     text(as.Date('2015-01-01'),0.95*ymax,site.names[i],cex=2)
-    if (i==2) {
-       legend('topleft',legend=c('Course Obs.','Model','Model Mean'),col=c('black','lightblue','blue'),pch=16,cex=1.75)
+    if (i==3) {
+       legend('topleft',legend=c('Course Obs.','SNODAS','Model','Model Mean'),col=c('black','red','lightblue','blue'),pch=16,cex=1.75)
     }
     box(which='plot')
     abline(h=0)

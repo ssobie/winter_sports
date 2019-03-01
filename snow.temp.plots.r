@@ -134,7 +134,7 @@ hyper.snow <- function(pr,tas,coeffs) {
         frac <- coeffs$a*(tanh(coeffs$b*(tas-coeffs$c))-coeffs$d)
         sample <- runif(length(tas),min=0,max=100)
         test <- sample > frac
-        high.temp <- tas > 12
+        high.temp <- tas >= 12
         test[high.temp] <- TRUE
         snow.type <- rep(TRUE,length(tas))
         snow.type[test] <- FALSE
@@ -287,7 +287,6 @@ snow.vs.tas <-function(stn.id,stn.name,stn.dir,model,stn.title,y.lim) {
   obs.bins <- obs.hist
   obs.bins$counts <- round(obs.sum)
   obs.bins$density <- round(obs.sum)/sum(obs.sum,na.rm=T)
-
   ##yr.fac <- as.factor(format(as.Date(snow.dates),'%Y'))
   ##mn.fac <- as.factor(format(as.Date(snow.dates),'%m'))
   ##mn.sum <- tapply(snow.data,list(yr.fac,mn.fac),sum,na.rm=T)
@@ -305,18 +304,18 @@ snow.vs.tas <-function(stn.id,stn.name,stn.dir,model,stn.title,y.lim) {
 
 if (1==0) {
   par(mar=c(5,5,5,2))
-  plot(obs.hist,freq=F,col='lightblue',border='blue',main='Observed Snowfall',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency',
+  plot(obs.hist,freq=T,col='lightblue',border='blue',main='Observed Snowfall',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency',
        cex=2,cex.lab=2,cex.axis=2,cex.main=2,xlim=c(-20,20),ylim=y.lim,pch='*')
   text(10,0.95*y.lim[2],stn.title,cex=2)     
   box(which='plot')
   abline(v=0)
 
-  plot(sim.hist,freq=F,col='lightgreen',border='darkgreen',main='Simulated Snow from \nObserved Precipitation',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency',
+  plot(sim.hist,freq=T,col='lightgreen',border='darkgreen',main='Simulated Snow from \nObserved Precipitation',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency',
        cex=2,cex.lab=2,cex.axis=2,cex.main=2,xlim=c(-20,20),ylim=y.lim,pch='*')
   abline(v=0)
   box(which='plot')
 
-  plot(model.hist,freq=F,col='orange',border='darkred',main='Simulated Snow from\nModelled Precipitation',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency',
+  plot(model.hist,freq=T,col='orange',border='darkred',main='Simulated Snow from\nModelled Precipitation',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency',
        cex=2,cex.lab=2,cex.axis=2,cex.main=2,xlim=c(-20,20),ylim=y.lim,pch='*')
   abline(v=0)
   box(which='plot')
@@ -347,18 +346,18 @@ if (1==0) {
 
 if (1==1) {
   par(mar=c(5,5,5,2))
-  plot(obs.bins,freq=F,col='lightblue',border='blue',main='Observed Snowfall',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency (%)',
+  plot(obs.bins,freq=F,col='lightblue',border='blue',main='Observed Snowfall',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency',
        cex=2,cex.lab=2,cex.axis=2,cex.main=2,xlim=c(-20,20),ylim=y.lim,pch='*')
   text(10,0.95*y.lim[2],stn.title,cex=2)     
   box(which='plot')
   abline(v=0)
 
-  plot(sim.bins,freq=F,col='lightgreen',border='darkgreen',main='Simulated Snow from \nObserved Precipitation',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency (%)',
+  plot(sim.bins,freq=F,col='lightgreen',border='darkgreen',main='Simulated Snow from \nObserved Precipitation',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency',
        cex=2,cex.lab=2,cex.axis=2,cex.main=2,xlim=c(-20,20),ylim=y.lim,pch='*')
   abline(v=0)
   box(which='plot')
 
-  plot(model.bins,freq=F,col='orange',border='darkred',main='Simulated Snow from\nModelled Precipitation',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency (%)',
+  plot(model.bins,freq=F,col='orange',border='darkred',main='Simulated Snow from\nModelled Precipitation',xlab='Mean Temp (\u00B0C)',ylab='Snow Frequency',
        cex=2,cex.lab=2,cex.axis=2,cex.main=2,xlim=c(-20,20),ylim=y.lim,pch='*')
   abline(v=0)
   box(which='plot')
@@ -410,6 +409,7 @@ stn.list <- c('1101530','1100120','1107680','1100030',
 stn.list <- c('1101530','1105658','1108906')
 stn.titles <- c('Chilliwack','Grouse','Whistler')
 y.lims <- list(c(0,0.21),c(0,0.21),c(0,0.21)) ##list(c(0,90),c(0,130),c(0,110)) ##
+##y.lims <- list(c(0,21),c(0,21),c(0,21)) ##list(c(0,90),c(0,130),c(0,110)) ##
 
 
 base.dir <- '/storage/data/projects/rci/data/assessments/snow_model/station_data/lower_mainland/'
@@ -417,7 +417,7 @@ source('/storage/data/projects/rci/assessments/code/extract.station.daily.r',chd
 
 model <- 'ERA'
 
-plot.file <- paste('/storage/data/projects/rci/data/winter_sports/plots/snow_temps/',model,'_comparison_hyper_snow_temperature5.png',sep='')
+plot.file <- paste('/storage/data/projects/rci/data/winter_sports/plots/snow_temps/',model,'_comparison_hyper_snow_temperature.2018.png',sep='')
 png(file=plot.file,width=1000,height=1000)
 par(mfrow=c(3,3))
 

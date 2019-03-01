@@ -3,6 +3,8 @@
 library(ncdf4)
 library(plotrix)
 
+source('/storage/data/projects/rci/stat.downscaling/bccaq2/code/new.netcdf.calendar.R',chdir=T)
+
 
 get.coordinates <- function(site) {
 
@@ -217,10 +219,12 @@ taylor2.diagram <- function(ref, model, add = FALSE, col = "red", pch = 19, pos.
             S <- (2 * (1 + R))/(sd.f + (1/sd.f))^2
         }
     }
+    
     print(paste0('TD SD: ',round(sd.f,2)))
     print(paste0('TD Cor: ',round(R,2)))
     points(sd.f * R, sd.f * sin(acos(R)), pch = pch, col = col, 
         cex = pcex)
+
     invisible(oldpar)
 }
 
@@ -289,9 +293,19 @@ era.data <- read.csv(era.file,header=T,as.is=T)
 era.swe.sims <- matrix(0,nrow=10,ncol=dim(era.data)[1])
 era.snow.sims <- matrix(0,nrow=10,ncol=dim(era.data)[1])
 
+snodas.file <- "/storage/data/projects/rci/data/winter_sports/obs/SNODAS/ncdf4_files/swe_snodas_modis_grid_van_whistler_20100101-20181231.nc"
+snc <- nc_open(snodas.file)
+lon <- ncvar_get(snc,'lon')
+lat <- ncvar_get(snc,'lat')
+snodas.dates <- as.character(netcdf.calendar(snc))
+
+
+
+
 ##Loop over sites
 plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/'
-png(file=paste0(plot.dir,'ncep2.era.swe.course.taylor.diagram.2018.png'),width=800,height=800)
+type <- 'SWE'
+png(file=paste0(plot.dir,'ncep2.era.swe.',type,'.taylor.diagram.2018.png'),width=800,height=800)
 
 for (i in seq_along(sites)) {
     site <- sites[i]
@@ -326,7 +340,7 @@ for (i in seq_along(sites)) {
     elev <- coords[3]
     site.slope <- bc.slopes[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]    
     site.aspect <- bc.aspects[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]    
-    
+
     ##Observation data
     if (obs.type[i] == 'course') {
       obs.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_courses/',site,'_snow_course.csv',sep='')
@@ -354,13 +368,25 @@ for (i in seq_along(sites)) {
        obs.dates <- obs.dates[!obs.na]
     }        
 
+    ##SNODAS Data at Courses
+    lon.ix <- which.min(abs(coords[1]-lon))
+    lat.ix <- which.min(abs(coords[2]-lat))
+    snodas.swe <- ncvar_get(snc,'swe',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
+    snodas.date.subset <- format(as.Date(snodas.dates),'%Y-%m-%d') %in% obs.dates
+    snodas.obs.subset <- obs.dates %in% format(as.Date(snodas.dates),'%Y-%m-%d')
+  
+
 ##    print(order(obs.dates) - 1:length(obs.dates))
 
     ncep2.date.subset <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% obs.dates
     ncep2.obs.subset <- obs.dates %in% format(as.Date(ncep2.dates),'%Y-%m-%d')
+    snodas.ncep2.subset <- format(as.Date(snodas.dates),'%Y-%m-%d') %in% format(as.Date(ncep2.dates),'%Y-%m-%d')
+    ncep2.snodas.subset <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% format(as.Date(snodas.dates),'%Y-%m-%d')
 
     era.date.subset <- format(as.Date(era.dates),'%Y-%m-%d') %in% obs.dates
     era.obs.subset <- obs.dates %in% format(as.Date(era.dates),'%Y-%m-%d')   
+    snodas.era.subset <- format(as.Date(snodas.dates),'%Y-%m-%d') %in% format(as.Date(era.dates),'%Y-%m-%d')
+    era.snodas.subset <- format(as.Date(era.dates),'%Y-%m-%d') %in% format(as.Date(snodas.dates),'%Y-%m-%d')
 
     model.match <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% format(as.Date(era.dates),'%Y-%m-%d')
 
@@ -382,21 +408,36 @@ for (i in seq_along(sites)) {
     print(paste0('ERA Cor: ',round(cor(obs.swe[era.obs.subset],era.swe.mean[era.date.subset]),2)))
 
 
-    if (i==1) {
-    taylor2.diagram(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
-                   main='SWE Comparison',pch=site.letter[i],col='red',pcex=1.5,cex.axis=1.5,cex.lab=1.5,cex.main=1.75)                  
-    taylor2.diagram(obs.swe[era.obs.subset],era.swe.mean[era.date.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5,cex=1.5)                     
-   
-    } else {
-    taylor2.diagram(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],add=T,col='red',pcex=1.5)
-    taylor2.diagram(obs.swe[era.obs.subset],era.swe.mean[era.date.subset],sd.arcs=TRUE,normalize=T,
+    if (type=='SNODAS') {
+      if (i==1) {
+        taylor2.diagram(snodas.swe[snodas.ncep2.subset],ncep2.swe.mean[ncep2.snodas.subset],sd.arcs=TRUE,normalize=T,
+                   main='SNODAS SWE Comparison',pch=site.letter[i],col='green',pcex=1.5,cex.axis=1.5,cex.lab=1.5,cex.main=1.75)                  
+        taylor2.diagram(snodas.swe[snodas.era.subset],era.swe.mean[era.snodas.subset],sd.arcs=TRUE,normalize=T,
+                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5,cex=1.5)                        
+      } else {
+        taylor2.diagram(snodas.swe[snodas.ncep2.subset],ncep2.swe.mean[ncep2.snodas.subset],sd.arcs=TRUE,normalize=T,
+                   pch=site.letter[i],add=T,col='green',pcex=1.5)
+        taylor2.diagram(snodas.swe[snodas.era.subset],era.swe.mean[era.snodas.subset],sd.arcs=TRUE,normalize=T,
                    pch=site.letter[i],col='blue',add=TRUE,pcex=1.5)                  
+      }
+    } else {
+      if (i==1) {
+        taylor2.diagram(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
+                   main='',pch=site.letter[i],col='green',pcex=1.5,cex.axis=1.5,cex.lab=1.5,cex.main=1.75)                  
+        taylor2.diagram(obs.swe[era.obs.subset],era.swe.mean[era.date.subset],sd.arcs=TRUE,normalize=T,
+                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5,cex=1.5)                     
+      } else {
+        taylor2.diagram(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
+                   pch=site.letter[i],add=T,col='green',pcex=1.5)
+        taylor2.diagram(obs.swe[era.obs.subset],era.swe.mean[era.date.subset],sd.arcs=TRUE,normalize=T,
+                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5)                  
+      }
     }
-
 }        
-legend('topright',legend=c('NCEP2','ERA'),col=c('red','blue'),pch=16,cex=1.5)
+
+##legend('topright',legend=c('ERA','NCEP2','SNODAS'),col=c('blue','green','red'),pch=16,cex=1.5)
+legend('topright',legend=c('ERA','NCEP2'),col=c('blue','green'),pch=16,cex=1.5)
+
 dev.off()
 
 ##
