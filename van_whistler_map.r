@@ -20,7 +20,7 @@ get.region.shape <- function(region,shape.dir) {
 vw.plot <- function(raster.object,
                     class.breaks,map.class.breaks.labels,colour.ramp,
                     plot.file,plot.title,leg.title,
-                    glaciers=FALSE) {
+                    glaciers=FALSE,bias=FALSE) {
 
   plot.window.xlim <- c(-123.75,-120.5)
   plot.window.ylim <- c(48.75,51.0)
@@ -39,6 +39,7 @@ vw.plot <- function(raster.object,
      bc.overlay <- 'bc_province_wgs84'
      bc.shp <- readOGR(shape.dir, bc.overlay, stringsAsFactors=F, verbose=F)
      us.shp <- readOGR(shape.dir, 'united_states', stringsAsFactors=F, verbose=F)
+     plot(spTransform(bc.shp,CRS("+init=epsg:4326")),add=TRUE,col='gray')
      image(raster.object, col=colour.ramp,breaks=class.breaks,ribbon=FALSE,xlim=plot.window.xlim, ylim=plot.window.ylim, add=TRUE,alpha=0.3)
 
      shape.dir <- paste0('/storage/data/projects/rci/data/assessments/metro_van/shapefiles/')
@@ -63,6 +64,15 @@ vw.plot <- function(raster.object,
      ocean.shp <- readOGR('/storage/data/projects/rci/data/assessments/crd/shapefiles/','west_coast_ocean',stringsAsFactors=F, verbose=F)
      plot(spTransform(ocean.shp,CRS("+init=epsg:4326")),add=TRUE,col='lightsteelblue',border='lightsteelblue')
      plot(spTransform(ocean.shp,CRS("+init=epsg:4326")),add=TRUE,border='black')
+
+
+     if (bias) {
+        load('/storage/data/projects/rci/data/winter_sports/snodas.bias.RData')
+        col.ix <- unlist(sapply(snodas.bias$bias,function(x,y){tail(which((y - x) < 0),1)},class.breaks))
+        points(snodas.bias$lons[1:13],snodas.bias$lats[1:13],col='black',pch=18,cex=2.5)                
+        points(snodas.bias$lons[14:17],snodas.bias$lats[14:17],col='black',pch=17,cex=2.5)                
+##        points(snodas.bias$lons,snodas.bias$lats,col=colour.ramp[col.ix],pch=18,cex=1.6)                
+     }
 
      legend('topright', col = "black", legend=rev(map.class.breaks.labels), pch=22, pt.bg = rev(colour.ramp), 
          pt.cex=2.0, y.intersp=0.8, title.adj=0.2, title=leg.title, xjust=0, cex=1.9)

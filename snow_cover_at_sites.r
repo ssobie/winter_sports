@@ -235,7 +235,7 @@ dev.off()
 
 ##MODIS Total Snow Days
 if (1==1) {
-plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/',model,'.total.snow.days.prct.at.sites.1001.2018.png')
+plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/',model,'.total.snow.days.by.longitude.sites.1001.2018.png')
 plot.title <- '' ##paste0('Total Snow Days')
 leg.title <- 'Days'
 ranked.elevs <- order(elevs)
@@ -251,36 +251,41 @@ par(mar=c(0,5,3,3))
 plot(0:slen,0:slen,xlab='',ylab='Snow Days',yaxs='i',
      col='white',main=plot.title,cex.axis=1.75,cex.lab=1.75,cex.main=2,
      xlim=c(1,slen),ylim=c(0,800),axes=FALSE)        
-##axis(1,at=1:slen,site.names[ranked.elevs],cex=1.75,cex.axis=1.75,las=2)                                                        
+##axis(1,at=1:slen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)                                                        
 axis(2,at=seq(0,1200,100),seq(0,1200,100),cex=1.75,cex.axis=1.75)                                                        
 abline(h=seq(0,1200,100),lty=2,col='gray',lwd=2)
 abline(v=1:slen,col='gray')
 for (j in 1:slen) {
-    print(elevs[ranked.elevs[j]])
-    boxplot(at=j-0.175,x=era.snodas.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.7,col='blue',border='blue')
-    boxplot(at=j+0.175,x=ncep2.snodas.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.7,col='green',border='green')
-    points(x=j,y=modis.snodas.days[[ranked.elevs[j]]],pch='-',cex=5,col='black')
-    points(x=j,y=snodas.snow.days[[ranked.elevs[j]]],pch='-',cex=5,col='red')
+    print(elevs[ranked.lons[j]])
+    boxplot(at=j-0.175,x=era.snodas.days[[ranked.lons[j]]],add=TRUE,axes=F,boxwex=0.7,col='blue',border='blue')
+    boxplot(at=j+0.175,x=ncep2.snodas.days[[ranked.lons[j]]],add=TRUE,axes=F,boxwex=0.7,col='green',border='green')
+    points(x=j,y=modis.snodas.days[[ranked.lons[j]]],pch='-',cex=5,col='black')
+    points(x=j,y=snodas.snow.days[[ranked.lons[j]]],pch='-',cex=5,col='red')
 }
-legend('topleft',leg=c('MODIS','SNODAS','ERA-I','NCEP2'),col=c('black','red','blue','green'),pch=15,cex=1.5)
+rect(0,710,2.3,800,border='black',col='white')
+text(x=1.3,y=750,'2009-2018',cex=1.5)
+
+##legend('topleft',leg=c('MODIS','SNODAS','ERA-I','NCEP2'),col=c('black','red','blue','green'),pch=15,cex=1.5)
 box(which='plot')
 
 par(mar=c(10,5,0.1,3))
 plot(0:slen,0:slen,xlab='',ylab='Snow Days',yaxs='i',
      col='white',main=plot.title,cex.axis=1.75,cex.lab=1.75,cex.main=2,
      xlim=c(1,slen),ylim=c(200,1100),axes=FALSE)        
-axis(1,at=1:slen,site.names[ranked.elevs],cex=1.75,cex.axis=1.75,las=2)                                                        
+axis(1,at=1:slen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)                                                        
 axis(2,at=c(300,600,900),c(300,600,900),cex=1.75,cex.axis=1.75)                                                        
 abline(h=seq(0,1200,100),lty=2,col='gray',lwd=2)
 abline(v=1:slen,col='gray')
 for (j in 1:slen) {
-    print(elevs[ranked.elevs[j]])
-    boxplot(at=j-0.175,x=era.snow.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.7,col='blue',border='blue')
-    boxplot(at=j+0.175,x=ncep2.snow.days[[ranked.elevs[j]]],add=TRUE,axes=F,boxwex=0.7,col='green',border='green')
-    points(x=j,y=modis.snow.days[[ranked.elevs[j]]],pch='-',cex=5,col='black')
+    print(elevs[ranked.lons[j]])
+    boxplot(at=j-0.175,x=era.snow.days[[ranked.lons[j]]],add=TRUE,axes=F,boxwex=0.7,col='blue',border='blue')
+    boxplot(at=j+0.175,x=ncep2.snow.days[[ranked.lons[j]]],add=TRUE,axes=F,boxwex=0.7,col='green',border='green')
+    points(x=j,y=modis.snow.days[[ranked.lons[j]]],pch='-',cex=5,col='black')
 }
-
-legend('topleft',leg=c('MODIS','ERA-I','NCEP2'),col=c('black','blue','green'),pch=15,cex=1.5)
+rect(0,1010,2.3,1100,border='black',col='white')
+text(x=1.3,y=1050,'2001-2018',cex=1.5)
+##legend('topleft',leg=c('MODIS','ERA-I','NCEP2'),col=c('black','blue','green'),pch=15,cex=1.5)
+legend('bottomleft',leg=c('MODIS','SNODAS','ERA-I','NCEP2'),col=c('black','red','blue','green'),pch=15,cex=1.5)
 box(which='plot')
 dev.off()
 

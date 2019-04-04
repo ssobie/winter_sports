@@ -14,7 +14,12 @@ get.coordinates <- function(site) {
 }
 
 get.snow.season.dates <- function(input.snow,dates) {
-                      
+
+  years <- format(as.Date(dates),'%Y')
+  jdays <- format(as.Date(dates),'%j')
+  jdays.list <- tapply(jdays,as.factor(years),list)
+  peaks <- tapply(input.snow,as.factor(years),function(x){which.max(x[1:300])})                      
+                    
   sim.snow <- input.snow
   sim.snow[sim.snow>0] <- 100
                       
@@ -41,6 +46,7 @@ get.snow.season.dates <- function(input.snow,dates) {
 
   rv <- list(lengths=lengths,
              starts =starts,
+             peaks = peaks,
              ends = ends)
 
   return(rv)               
@@ -56,7 +62,7 @@ sites <- c('spuzzum_creek','upper_squamish','chilliwack_river','tenquille_lake')
 site.names <- c('Spuzzum Creek','Upper Squamish','Chilliwack River','Tenquille Lake')
 slen <- 1001
 
-results.matrix <- matrix(0,nrow=15,ncol=length(sites))
+results.matrix <- matrix(0,nrow=20,ncol=length(sites))
 
 ##Loop over sites
 
@@ -72,6 +78,7 @@ for (i in seq_along(sites)) {
     dates.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/snow_seasons/',site,'_season_dates.csv') 
     season.dates <- read.csv(dates.file,header=T,as.is=T)
     pillow.starts <- as.numeric(format(as.Date(season.dates$Start),'%j'))
+    pillow.peaks <- as.numeric(format(as.Date(season.dates$Peak),'%j'))
     pillow.ends <- as.numeric(format(as.Date(season.dates$End),'%j'))
     pillow.lengths <- as.numeric(season.dates$Length)
 
@@ -85,38 +92,42 @@ for (i in seq_along(sites)) {
     test.dates <- get.snow.season.dates(swe.sims[,1],sim.dates)
     sim.lengths <- matrix(0,nrow=slen,ncol=ylen)
     sim.starts <- matrix(0,nrow=slen,ncol=ylen)
+    sim.peaks <- matrix(0,nrow=slen,ncol=ylen)
     sim.ends <- matrix(0,nrow=slen,ncol=ylen)
     
     for (s in 1:slen) {
       swe.se.dates <- get.snow.season.dates(swe.sims[,s],sim.dates)
       sim.lengths[s,1:length(swe.se.dates$lengths)] <- swe.se.dates$lengths
       sim.starts[s,1:length(swe.se.dates$starts)] <- swe.se.dates$starts
+      sim.peaks[s,1:length(swe.se.dates$peaks)] <- swe.se.dates$peaks
       sim.ends[s,1:length(swe.se.dates$ends)] <- swe.se.dates$ends
     }
     sim.lengths[sim.lengths==0] <- NA
     sim.starts[sim.starts==0] <- NA
+    sim.peaks[sim.peaks==0] <- NA
     sim.ends[sim.ends==0] <- NA
 
     year.match <- as.numeric(sim.years) %in% as.numeric((format(as.Date(season.dates$Start),'%Y')))
     
     lengths.diff <- season.dates$Length - sim.lengths[,year.match]
     starts.diff <-  pillow.starts - sim.starts[,year.match]
+    peaks.diff <-  pillow.peaks - sim.peaks[,year.match]
     ends.diff <-  pillow.ends - sim.ends[,year.match]
 
-    rv <- c(mean(pillow.starts),mean(pillow.ends),mean(pillow.lengths),
-            mean(sim.starts[,year.match]),mean(sim.ends[,year.match]),mean(sim.lengths[,year.match]),
-            sd(sim.starts[,year.match]),sd(sim.ends[,year.match]),sd(sim.lengths[,year.match]),
-            mean(starts.diff),mean(ends.diff),mean(lengths.diff),
-            sd(starts.diff),sd(ends.diff),sd(lengths.diff))
+    rv <- c(mean(pillow.starts),mean(pillow.peaks),mean(pillow.ends),mean(pillow.lengths),
+            mean(sim.starts[,year.match]),mean(sim.peaks[,year.match]),mean(sim.ends[,year.match]),mean(sim.lengths[,year.match]),
+            sd(sim.starts[,year.match]),sd(sim.peaks[,year.match]),sd(sim.ends[,year.match]),sd(sim.lengths[,year.match]),
+            mean(starts.diff),mean(peaks.diff),mean(ends.diff),mean(lengths.diff),
+            sd(starts.diff),sd(peaks.diff),sd(ends.diff),sd(lengths.diff))
     results.matrix[,i] <- round(rv,1)
 
 }
 
-    results.matrix <- cbind(c('Site','ASP Start','ASP End','ASP Length',
-                              'Sim Start','Sim End','Sim Length',
-                              'Start SD' ,'End SD' ,'Length SD' ,
-                              'Start Diff','End Diff','Length Diff',      
-                              'SDiff SD'  ,'EDiff SD','LDiff SD'),rbind(site.names,results.matrix))
+    results.matrix <- cbind(c('Site','ASP Start','ASP Peak','ASP End','ASP Length',
+                              'Sim Start','Sim Peak','Sim End','Sim Length',
+                              'Start SD' ,'Peak SD','End SD' ,'Length SD' ,
+                              'Start Diff','Peak Diff','End Diff','Length Diff',      
+                              'SDiff SD'  ,'PDiff SD','EDiff SD','LDiff SD'),rbind(site.names,results.matrix))
 
 
 

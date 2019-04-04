@@ -10,9 +10,9 @@ sites <- c('spuzzum_creek',
 site.names <- c('Spuzzum Creek','Upper Squamish','Chilliwack River','Tenquille Lake')
 
 plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/'
-png(file=paste0(plot.dir,'asp.ncep2.tas.series.png'),width=1200,height=1200)
+##png(file=paste0(plot.dir,'asp.ncep2.tas.series.png'),width=1200,height=1200)
 
-par(mfrow=c(4,1))
+##par(mfrow=c(4,1))
 par(mar=c(5.1,5.1,1.1,2.1))
 for (i in seq_along(sites)) {
     site <- sites[i]
@@ -57,7 +57,7 @@ for (i in seq_along(sites)) {
     if (i==4) {
        legend('bottomleft',legend=c('Daily (Model-Obs.)','7-Day Smoothed'),col=c('gray','black'),pch=15,cex=1.75)
     }
-
+browser()
 }
 
 dev.off()

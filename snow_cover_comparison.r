@@ -209,7 +209,7 @@ vw.plot(modis.snow.raster,
 }
 
 ##---------------------------------------------------------------------------------
-##Four panel figure
+##Six panel figure
 if (1==1) {
 plot.file <- '/storage/data/projects/rci/data/winter_sports/plots/modis.metro.van.comparison.data.2018.png'
 png(plot.file,width=1800,height=1800)
@@ -246,7 +246,7 @@ vw.plot(modis.snow.raster,
         glaciers=FALSE)
 
 ##Success Rate for ERA
-plot.title <- paste0('ERA-Interim - MODIS Snow Cover Comparison')
+plot.title <- paste0('ERA-Interim - MODIS All Days Success Rate')
 load(paste0(save.dir,'ERA.success.rate.2018.RData'))
 map.range <- c(70,100)
 leg.title <- 'Success (%)'
@@ -262,7 +262,7 @@ vw.plot(ratio.raster,
         glaciers=TRUE)
 
 ##Success Rate for NCEP2
-plot.title <- paste0('NCEP2 - MODIS Snow Cover Comparison')
+plot.title <- paste0('NCEP2 - MODIS All Days Success Rate')
 load(paste0(save.dir,'NCEP2.success.rate.2018.RData'))
 map.range <- c(70,100)
 leg.title <- 'Success (%)'
@@ -278,7 +278,7 @@ vw.plot(ratio.raster,
         glaciers=TRUE)
 
 
-plot.title <- paste0('ERA-Interim - MODIS Percent Diff Sum')
+plot.title <- paste0('ERA-Interim - MODIS Snow Days Percent Difference')
 load(paste0(save.dir,'ERA.snow.days.2018.RData'))
 model.snow <- model.snow.raster$z
 modis.snow <- modis.snow.raster$z
@@ -303,7 +303,7 @@ vw.plot(sp.raster,
 ##plot.file <- '/storage/data/projects/rci/data/winter_sports/plots/modis-NCEP2.prct.diff.png'
 ##png(plot.file,width=1600,height=1600)
 
-plot.title <- paste0('NCEP2 - MODIS Percent Diff Sum')
+plot.title <- paste0('NCEP2 - MODIS Snow Days Percent Difference')
 load(paste0(save.dir,'NCEP2.snow.days.2018.RData'))
 model.snow <- model.snow.raster$z
 modis.snow <- modis.snow.raster$z

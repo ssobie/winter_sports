@@ -33,6 +33,7 @@ get.coordinates <- function(site) {
 }
 
 
+
 ##Modified version of Taylor diagram to enable better size control
 
 taylor2.diagram <- function(ref, model, add = FALSE, col = "red", pch = 19, pos.cor = TRUE, 
@@ -62,7 +63,7 @@ taylor2.diagram <- function(ref, model, add = FALSE, col = "red", pch = 19, pos.
         sd.f <- sd.f/sd.r
         sd.r <- 1
     }
-    maxsd <- 1.5 * max(sd.f, sd.r)
+    maxsd <- 4.5 ##1.5 * max(sd.f, sd.r)
     oldpar <- par("mar", "xpd", "xaxs", "yaxs")
     if (!add) {
         if (pos.cor) {
@@ -226,28 +227,44 @@ taylor2.diagram <- function(ref, model, add = FALSE, col = "red", pch = 19, pos.
         cex = pcex)
 
     invisible(oldpar)
+    return(list(cr=round(R,2),cd=round(sd.f,2)))
 }
 
+##SNOW MODEL
+snow.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/')
+snw.file <- paste0(snow.dir,'era_con_swe.nc')
+snw.nc <- nc_open(snw.file)
+lon <- ncvar_get(snw.nc,'lon')
+lat <- ncvar_get(snw.nc,'lat')
+snow.time <- netcdf.calendar(snw.nc)
+
+ncep2.file <- paste0(snow.dir,'ncep2_con_swe.nc')
+nsw.nc <- nc_open(ncep2.file)
+ncep2.time <- netcdf.calendar(nsw.nc)
+
+##VIC
+vic.dir <- paste0('/storage/data/projects/rci/data/winter_sports/')
+vic.file <- paste0(vic.dir,'swe_day_VIC_BASE_historical_run1_19500101-20061231.nc')
+vic.nc <- nc_open(vic.file)
+vic.time <- netcdf.calendar(vic.nc)
+
+model.match <- format(snow.time,'%Y-%m-%d') %in% format(vic.time,'%Y-%m-%d')
+ncep2.match <- format(ncep2.time,'%Y-%m-%d') %in% format(vic.time,'%Y-%m-%d')
+vic.match <- format(vic.time,'%Y-%m-%d') %in% format(snow.time,'%Y-%m-%d')
+
+model.data <- ncvar_get(snw.nc,'swe')[,,model.match]*1000
+ncep2.data <- ncvar_get(nsw.nc,'swe')[,,ncep2.match]*1000
+vic.data <- ncvar_get(vic.nc,'swe')[,,vic.match]*1000
+data.diff <- apply(model.data - vic.data,c(1,2),mean,na.rm=T)
+common.time <- vic.time[vic.match]
+
+lon <- ncvar_get(snw.nc,'lon')
+lat <- ncvar_get(snw.nc,'lat')
 
 
-##Slope and Aspect Values
-as.dir <- '/storage/data/projects/rci/data/prism/'
-slopes.nc <- nc_open(paste0(as.dir,'prism_slopes.nc'))
-bc.slopes <- ncvar_get(slopes.nc,'Band1')/90*pi/2
-bc.lon <- ncvar_get(slopes.nc,'lon')
-bc.lat <- ncvar_get(slopes.nc,'lat')
-nc_close(slopes.nc)
-
-aspects.nc <- nc_open(paste0(as.dir,'prism_aspects.nc')) 
-bc.aspects <- ncvar_get(aspects.nc,'Band1')/360*2*pi
-nc_close(aspects.nc)
-
-
-
-##-----------------------------------------------------------
-##Snow Courses
-
-if (1==1) {
+nc_close(vic.nc)
+nc_close(snw.nc)
+nc_close(nsw.nc)
 
 sites <- c('shovelnose_mountain',
            'brookmere',
@@ -269,179 +286,72 @@ sites <- c('shovelnose_mountain',
 obs.type <- c(rep('course',13),rep('asp',4))
 site.letter <- c('M','B','L','C','O','P','G','D','S','N','W','K','H','R','Z','T','U')
 
-model.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/'
-
-ncep2.file <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/grouse_mountain_NCEP2_800m_data.csv'
-
-course.site.swe <- vector(mode='list',length=length(sites))
-ncep2.site.swe <- vector(mode='list',length=length(sites))
-era.site.swe <- vector(mode='list',length=length(sites))
-
-course.site.pack <- vector(mode='list',length=length(sites))
-ncep2.site.pack <- vector(mode='list',length=length(sites))
-era.site.pack <- vector(mode='list',length=length(sites))
-
-ncep2.file <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/grouse_mountain_NCEP2_800m_data.csv'
-ncep2.data <- read.csv(ncep2.file,header=T,as.is=T)
-
-ncep2.swe.sims <- matrix(0,nrow=10,ncol=dim(ncep2.data)[1])
-ncep2.snow.sims <- matrix(0,nrow=10,ncol=dim(ncep2.data)[1])
-
-era.file <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/grouse_mountain_ERA_800m_data.csv'
-era.data <- read.csv(era.file,header=T,as.is=T)
-
-era.swe.sims <- matrix(0,nrow=10,ncol=dim(era.data)[1])
-era.snow.sims <- matrix(0,nrow=10,ncol=dim(era.data)[1])
-
-snodas.file <- "/storage/data/projects/rci/data/winter_sports/obs/SNODAS/ncdf4_files/swe_snodas_modis_grid_van_whistler_20100101-20181231.nc"
-snc <- nc_open(snodas.file)
-lon <- ncvar_get(snc,'lon')
-lat <- ncvar_get(snc,'lat')
-snodas.dates <- as.character(netcdf.calendar(snc))
-
-
-
-
 ##Loop over sites
 plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/'
 type <- 'SWE'
-png(file=paste0(plot.dir,'ncep2.era.swe.',type,'.taylor.diagram.2018.png'),width=800,height=800)
+png(file=paste0(plot.dir,'vic.era.',type,'.taylor.diagram.2018.png'),width=800,height=800)
 
 for (i in seq_along(sites)) {
     site <- sites[i]
     print(site)
-    ##Reanalysis 800m data
-    ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_NCEP2_800m_data.csv')
-    ##if (site=='spuzzum_creek') {
-    ##    ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_NCEP2_800m_data_193_121.csv')
-    ##}
-
-    ncep2.data <- read.csv(ncep2.file,header=T,as.is=T)
-    ncep2.pr <- ncep2.data$Pr
-    ncep2.tasmax <- ncep2.data$Tasmax
-    ncep2.tasmin <- ncep2.data$Tasmin
-    ncep2.tas <- ncep2.data$Tas
-    ncep2.dates <- ncep2.data$Dates
-
-    era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_ERA_800m_data.csv')
-    ##if (site=='spuzzum_creek') {
-    ##    era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_ERA_800m_data_193_121.csv')
-    ##}
-
-    era.data <- read.csv(era.file,header=T,as.is=T)
-    era.pr <- era.data$Pr
-    era.tasmax <- era.data$Tasmax
-    era.tasmin <- era.data$Tasmin
-    era.tas <- era.data$Tas
-    era.dates <- era.data$Dates
 
     coords <- get.coordinates(site)
     lat.bnds <- coords[2]
     elev <- coords[3]
-    site.slope <- bc.slopes[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]    
-    site.aspect <- bc.aspects[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]    
 
     ##Observation data
     if (obs.type[i] == 'course') {
-      obs.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_courses/',site,'_snow_course.csv',sep='')
-      obs.data <- read.csv(obs.file,header=T,as.is=T)
-      obs.dates <- format(as.Date(obs.data[,1]),'%Y-%m-%d')
-      obs.swe <- obs.data[,3] ##mm
-      obs.na <- is.na(obs.swe)
-      obs.pack <- obs.data[,2] ##cm
-      obs.dense <-  obs.data[,4]
-      obs.swe <- obs.swe[!obs.na]
-      obs.dates <- obs.dates[!obs.na]
-
+       obs.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_courses/',site,'_snow_course.csv',sep='')
+       obs.data <- read.csv(obs.file,header=T,as.is=T)
+       obs.dates <- format(as.Date(obs.data[,1]),'%Y-%m-%d')
+       obs.swe <- obs.data[,3] ##mm
+       obs.na <- is.na(obs.swe)
+       obs.swe <- obs.swe[!obs.na]
+       obs.dates <- obs.dates[!obs.na]
     } else {
        obs.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_pillow/',site,'_asp.csv',sep='')
        obs.data <- read.csv(obs.file,header=T,as.is=T)
        obs.dates <- format(as.Date(obs.data[,2]),'%Y-%m-%d')
-       obs.tasmax <- obs.data[,3]
-       obs.tasmin <- obs.data[,5]
-       obs.tas <- (obs.tasmax + obs.tasmin)/2
-       obs.precip <- obs.data[,7]##mm
        obs.swe <- obs.data[,11] ##mm
        obs.na <- is.na(obs.swe)
-       obs.pack <- obs.data[,13] ##cm
        obs.swe <- obs.swe[!obs.na]
        obs.dates <- obs.dates[!obs.na]
-    }        
-
-    ##SNODAS Data at Courses
-    lon.ix <- which.min(abs(coords[1]-lon))
-    lat.ix <- which.min(abs(coords[2]-lat))
-    snodas.swe <- ncvar_get(snc,'swe',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
-    snodas.date.subset <- format(as.Date(snodas.dates),'%Y-%m-%d') %in% obs.dates
-    snodas.obs.subset <- obs.dates %in% format(as.Date(snodas.dates),'%Y-%m-%d')
-  
-
-##    print(order(obs.dates) - 1:length(obs.dates))
-
-    ncep2.date.subset <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% obs.dates
-    ncep2.obs.subset <- obs.dates %in% format(as.Date(ncep2.dates),'%Y-%m-%d')
-    snodas.ncep2.subset <- format(as.Date(snodas.dates),'%Y-%m-%d') %in% format(as.Date(ncep2.dates),'%Y-%m-%d')
-    ncep2.snodas.subset <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% format(as.Date(snodas.dates),'%Y-%m-%d')
-
-    era.date.subset <- format(as.Date(era.dates),'%Y-%m-%d') %in% obs.dates
-    era.obs.subset <- obs.dates %in% format(as.Date(era.dates),'%Y-%m-%d')   
-    snodas.era.subset <- format(as.Date(snodas.dates),'%Y-%m-%d') %in% format(as.Date(era.dates),'%Y-%m-%d')
-    era.snodas.subset <- format(as.Date(era.dates),'%Y-%m-%d') %in% format(as.Date(snodas.dates),'%Y-%m-%d')
-
-    model.match <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% format(as.Date(era.dates),'%Y-%m-%d')
-
-    era.swe.sims <- read.csv(paste0(model.dir,site,'.era.swe.1001.csv'),header=T,as.is=T)
-    era.swe.mean <- apply(era.swe.sims,1,mean,na.rm=T)
-
-    ncep2.swe.sims <- read.csv(paste0(model.dir,site,'.ncep2.swe.1001.csv'),header=T,as.is=T) ##[model.match,]
-    ncep2.swe.mean <- apply(ncep2.swe.sims,1,mean,na.rm=T)
-
-    if (site=='klesilkwa') {
-##      browser()
     }
+ 
+    lon.ix <- which.min(abs(coords[1]-lon))
+    lat.ix <- which.min(abs(coords[2]-lat))   
 
-    print('Inputs')
-    print(paste0('NCEP2 SD: ',round(sd(ncep2.swe.mean[ncep2.date.subset] / sd(obs.swe[ncep2.obs.subset])),2)))
-    print(paste0('NCEP2 Cor: ',round(cor(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset]),2)))
-
-    print(paste0('ERA SD: ',round(sd(era.swe.mean[era.date.subset] / sd(obs.swe[era.obs.subset])),2)))
-    print(paste0('ERA Cor: ',round(cor(obs.swe[era.obs.subset],era.swe.mean[era.date.subset]),2)))
-
-
-    if (type=='SNODAS') {
-      if (i==1) {
-        taylor2.diagram(snodas.swe[snodas.ncep2.subset],ncep2.swe.mean[ncep2.snodas.subset],sd.arcs=TRUE,normalize=T,
-                   main='SNODAS SWE Comparison',pch=site.letter[i],col='green',pcex=1.5,cex.axis=1.5,cex.lab=1.5,cex.main=1.75)                  
-        taylor2.diagram(snodas.swe[snodas.era.subset],era.swe.mean[era.snodas.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5,cex=1.5)                        
-      } else {
-        taylor2.diagram(snodas.swe[snodas.ncep2.subset],ncep2.swe.mean[ncep2.snodas.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],add=T,col='green',pcex=1.5)
-        taylor2.diagram(snodas.swe[snodas.era.subset],era.swe.mean[era.snodas.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5)                  
+    model.date.subset <- format(common.time,'%Y-%m-%d') %in% obs.dates
+    obs.date.subset <- obs.dates %in% format(common.time,'%Y-%m-%d') 
+    
+    if (i==1) {
+      rv <- taylor2.diagram(vic.data[lon.ix,lat.ix,model.date.subset],obs.swe[obs.date.subset],sd.arcs=TRUE,normalize=T,
+                 pch=site.letter[i],col='orange',pcex=1.5,cex=1.5,cex.lab=1.5,cex.main=1.75)                     
+      if (!is.na(rv$cr)) {           
+        rv <- taylor2.diagram(model.data[lon.ix,lat.ix,model.date.subset],obs.swe[obs.date.subset],sd.arcs=TRUE,normalize=T,
+                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5,cex=1.5)                     
+        rv  <- taylor2.diagram(ncep2.data[lon.ix,lat.ix,model.date.subset],obs.swe[obs.date.subset],sd.arcs=TRUE,normalize=T,
+                   pch=site.letter[i],col='green',add=TRUE,pcex=1.5,cex=1.5)                     
       }
     } else {
-      if (i==1) {
-        taylor2.diagram(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
-                   main='',pch=site.letter[i],col='green',pcex=1.5,cex.axis=1.5,cex.lab=1.5,cex.main=1.75)                  
-        taylor2.diagram(obs.swe[era.obs.subset],era.swe.mean[era.date.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5,cex=1.5)                     
-      } else {
-        taylor2.diagram(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],add=T,col='green',pcex=1.5)
-        taylor2.diagram(obs.swe[era.obs.subset],era.swe.mean[era.date.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5)                  
+      rv <- taylor2.diagram(vic.data[lon.ix,lat.ix,model.date.subset],obs.swe[obs.date.subset],sd.arcs=TRUE,normalize=T,
+                 pch=site.letter[i],col='orange',add=TRUE,pcex=1.5,cex=1.5)        
+      if (!is.na(rv$cr)) {           
+        rv <- taylor2.diagram(model.data[lon.ix,lat.ix,model.date.subset],obs.swe[obs.date.subset],sd.arcs=TRUE,normalize=T,
+                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5,cex=1.5)        
+        rv <- taylor2.diagram(ncep2.data[lon.ix,lat.ix,model.date.subset],obs.swe[obs.date.subset],sd.arcs=TRUE,normalize=T,
+                   pch=site.letter[i],col='green',add=TRUE,pcex=1.5,cex=1.5)        
+
       }
     }
 }        
 
-##legend('topright',legend=c('ERA','NCEP2','SNODAS'),col=c('blue','green','red'),pch=16,cex=1.5)
-legend('topright',legend=c('ERA','NCEP2'),col=c('blue','green'),pch=16,cex=1.5)
+legend('topright',legend=c('ERA','NCEP2','VIC'),col=c('blue','green','orange'),pch=16,cex=1.5)
 
 dev.off()
 
 ##
 
 
-}
+
 

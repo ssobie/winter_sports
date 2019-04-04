@@ -146,7 +146,7 @@ sites <- c('grouse_mountain',
            'nahatlatch',
            'brookmere')
 
-site.names <- c('Grouse Mmountain',
+site.names <- c('Grouse Mountain',
            'Nahatlatch',
            'Brookmere')
 
@@ -169,7 +169,7 @@ snow.sims <- matrix(0,nrow=slen,ncol=dim(model.data)[1])
 model.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/'
 plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/course_comparison/'
 ##png(file=paste0(plot.dir,model,'.subset.sites.swe.comparison.2018.png'),width=1400,height=1000)
-png(file=paste0(plot.dir,model,'.selected.sites.swe.comparison.2018.png'),width=1000,height=1000)
+png(file=paste0(plot.dir,model,'.selected.sites.swe.comparison.2018.png'),width=1000,height=900)
 par(mfrow=c(3,1))    
 
 for (i in seq_along(sites)) {

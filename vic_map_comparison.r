@@ -22,7 +22,7 @@ model <- 'ERA'
 
 ##SNOW MODEL
 snow.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/')
-snw.file <- paste0(snow.dir,'swe_BCCAQ2-PRISM_',model,'_19790101-20181031.nc')
+snw.file <- paste0(snow.dir,'era_con_swe.nc')
 snw.nc <- nc_open(snw.file)
 lon <- ncvar_get(snw.nc,'lon')
 lat <- ncvar_get(snw.nc,'lat')
@@ -31,24 +31,49 @@ nc.grid <- get.netcdf.grid(snw.nc)
 coordinates(nc.grid) <- c("lon", "lat")
 model.coords <- nc.grid@coords
 
-##SNODAS 
-snodas.dir <- paste0('/storage/data/projects/rci/data/winter_sports/obs/SNODAS/ncdf4_files/')
-snd.file <- paste0(snodas.dir,'swe_snodas_modis_grid_van_whistler_20100101-20181231.nc')
-snd.nc <- nc_open(snd.file)
-snodas.time <- netcdf.calendar(snd.nc)
+##VIC 
+vic.dir <- paste0('/storage/data/projects/rci/data/winter_sports/')
+vic.file <- paste0(vic.dir,'swe_day_VIC_BASE_historical_run1_19500101-20061231.nc')
+vic.nc <- nc_open(vic.file)
+vic.time <- netcdf.calendar(vic.nc)
 
-model.match <- format(snow.time,'%Y-%m-%d') %in% format(snodas.time,'%Y-%m-%d')
-snodas.match <- format(snodas.time,'%Y-%m-%d') %in% format(snow.time,'%Y-%m-%d')
+model.match <- format(snow.time,'%Y-%m-%d') %in% format(vic.time,'%Y-%m-%d')
+vic.match <- format(vic.time,'%Y-%m-%d') %in% format(snow.time,'%Y-%m-%d')
 
 
 model.data <- ncvar_get(snw.nc,'swe')[,,model.match]*1000
-snodas.data <- ncvar_get(snd.nc,'swe')[,,snodas.match]
+vic.data <- ncvar_get(vic.nc,'swe')[,,vic.match]*1000
 
-common.time <- snodas.time[snodas.match]
+common.time <- vic.time[vic.match]
+april1.ix <- grep('*-04-01',common.time)
 
-data.diff <- apply(model.data - snodas.data,c(1,2),mean,na.rm=T)
+data.diff <- apply(model.data - vic.data,c(1,2),mean,na.rm=T)
+april.diff <- apply(model.data[,,april1.ix] - vic.data[,,april1.ix],c(1,2),mean,na.rm=T)
+
+nc_close(vic.nc)
+nc_close(snw.nc)
+
+valid <- !is.na(data.diff)
+vlen <- sum(valid)
+vix <- which(valid,arr.ind=T)
+
+cor.mat <- data.diff*0
+sd.mat <- data.diff*0
+
+for (i in 1:vlen) {
+    print(i)
+    ix <- as.numeric(vix[i,])
+    cor.mat[ix[1],ix[2]] <- cor(model.data[ix[1],ix[2],],vic.data[ix[1],ix[2],])
+    sd.model <- sd(model.data[ix[1],ix[2],])
+    sd.vic <- sd(vic.data[ix[1],ix[2],])
+    sd.mat[ix[1],ix[2]] <- sd.model/sd.vic
+}
+
 
 diff.raster <-  list(x=lon,y=lat,z=data.diff)
+april.raster <-  list(x=lon,y=lat,z=april.diff)
+cor.raster <-  list(x=lon,y=lat,z=cor.mat)
+sd.raster <-  list(x=lon,y=lat,z=sd.mat)
 
 ##Need 
 ##ratio.raster for the success rate
@@ -62,31 +87,70 @@ save.dir <- '/storage/data/projects/rci/data/winter_sports/plots/data_files/'
 ##save(modis.snow.raster,file=paste0(save.dir,'modis.snow.days.2018.RData'))
 ##save(model.snow.raster,file=paste0(save.dir,model,'.snow.days.2018.RData'))
 
-nc_close(snd.nc)
-nc_close(snw.nc)
 
 ##save.dir <- '/storage/data/projects/rci/data/winter_sports/plots/data_files/'
 ##load(paste0(save.dir,model,'.success.rate.2018.RData'))
 ##---------------------------------------------------------------------------------
-##Comparison Plot
+##Average SWE Comparison Plot
 if (1==1)  {
-plot.file <- paste('/storage/data/projects/rci/data/winter_sports/plots/',model,'.swe.snodas.diff.png')
-plot.title <- paste0(model,' Snow Model-SNODAS SWE Comparison')
+plot.file <- paste('/storage/data/projects/rci/data/winter_sports/plots/',model,'.swe.vic.diff.png')
+plot.title <- paste0(model,' Snow Model-VIC SWE Comparison')
+
+##png(plot.file,width=1400,height=2700)
+##par(mfrow=c(3,1))
+
 map.range <- range(data.diff,na.rm=T)
 leg.title <- 'mm'
-class.breaks <- c(-10000,-1000,-500,-250,-100,-50,0,50,100,250,500,1000,100000)   ####get.class.breaks('swe',type='past',map.range,manual.breaks='')
+class.breaks <- c(-100000,-500,-300,-200,-100,-50,0,50,100,200,300,500,100000)   ####get.class.breaks('swe',type='past',map.range,manual.breaks='')
 map.class.breaks.labels <- get.class.break.labels(class.breaks,lesser.sign=TRUE,greater.sign=TRUE)
 colour.ramp <- get.legend.colourbar(var.name='swe',map.range=map.range,
                                     my.bp=0,class.breaks=class.breaks,
                                     type)
-
+plot.title <- paste0(model,' Snow Model-VIC Average SWE Comparison')
 vw.plot(diff.raster,
         class.breaks,map.class.breaks.labels,colour.ramp,
         plot.file,plot.title,leg.title,
         glaciers=TRUE,bias=TRUE)
+
+browser()
+
+##SWE Corr
+map.range <- range(cor.mat,na.rm=T)
+leg.title <- 'Cor'
+class.breaks <- c(0,0.25,0.5,0.6,0.7,0.8,0.9,1) ##get.class.breaks('swe',type='past',map.range,manual.breaks='')
+map.class.breaks.labels <- get.class.break.labels(class.breaks,lesser.sign=FALSE,greater.sign=FALSE)
+colour.ramp <- get.legend.colourbar(var.name='swe',map.range=map.range,
+                                    my.bp=0,class.breaks=class.breaks,
+                                    type)
+plot.title <- paste0(model,' Snow Model-VIC SWE Correlation')
+vw.plot(cor.raster,
+        class.breaks,map.class.breaks.labels,colour.ramp,
+        plot.file,plot.title,leg.title,
+        glaciers=TRUE,bias=TRUE)
+
+
+##SWE SD
+map.range <- range(sd.mat,na.rm=T)
+leg.title <- 'SD Ratio'
+class.breaks <- c(0,0.25,0.5,0.75,1,1.25,1.5,1.75,2,2.5,5,10000) ##get.class.breaks('swe',type='past',map.range,manual.breaks='')
+map.class.breaks.labels <- get.class.break.labels(class.breaks,lesser.sign=FALSE,greater.sign=TRUE)
+colour.ramp <- get.legend.colourbar(var.name='pr',map.range=map.range,
+                                    my.bp=1,class.breaks=class.breaks,
+                                    type)
+plot.title <- paste0(model,' Snow Model-VIC Variability Ratio')
+vw.plot(sd.raster,
+        class.breaks,map.class.breaks.labels,colour.ramp,
+        plot.file,plot.title,leg.title,
+        glaciers=TRUE,bias=TRUE)
+
+##dev.off()
 }
 
 browser()
+
+
+
+
 
 ##---------------------------------------------------------------------------------
 ##Valid Observations Plot
@@ -166,7 +230,7 @@ vw.plot(modis.snow.raster,
 
 ##---------------------------------------------------------------------------------
 ##Four panel figure
-if (1==1) {
+if (1==0) {
 plot.file <- '/storage/data/projects/rci/data/winter_sports/plots/modis.metro.van.comparison.data.2018.png'
 png(plot.file,width=1800,height=1800)
 par(mfrow=c(3,2))
