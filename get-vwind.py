@@ -8,13 +8,13 @@ Output file: tasmin_20180101.nc
 from ecmwfapi import ECMWFDataServer
 import datetime
 
-starttime = datetime.datetime.strptime('2003-12-06','%Y-%m-%d')
-endtime = datetime.datetime.strptime('2018-10-31','%Y-%m-%d')
+starttime = datetime.datetime.strptime('2018-11-01','%Y-%m-%d')
+endtime = datetime.datetime.strptime('2018-12-31','%Y-%m-%d')
 date_series = [starttime + datetime.timedelta(days=x) for x in range(0,(endtime-starttime).days+1)]
 for date in date_series:
     date_string = date.strftime("%Y-%m-%d")
     print(date_string)
-    output_file = "/storage/data/projects/rci/data/winter_sports/ERA_INTERIM/wind/download/vwind_12_"+date_string+".nc"
+    output_file = "/storage/data/projects/rci/data/winter_sports/ERA_INTERIM/wind/download/vwind_00_"+date_string+".nc"
     serv_list = {
         "class"  : "ei",
         "dataset": "interim",
@@ -25,7 +25,7 @@ for date in date_series:
         "param"  : "166.128",
         "step"   : "3/6/9/12",
         "stream" : "oper",
-        "time"   : "12:00:00",
+        "time"   : "00:00:00",
         "type"   : "fc",
         "format" : "netcdf",
         "target" : output_file,

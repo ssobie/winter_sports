@@ -12,8 +12,8 @@ import datetime
 from netCDF4 import Dataset, date2num, num2date
 import numpy as np
  
-starttime = datetime.datetime.strptime('2016-01-01','%Y-%m-%d')
-endtime = datetime.datetime.strptime('2018-10-31','%Y-%m-%d')
+starttime = datetime.datetime.strptime('2018-11-01','%Y-%m-%d')
+endtime = datetime.datetime.strptime('2018-12-31','%Y-%m-%d')
 date_series = [starttime + datetime.timedelta(days=x) for x in range(0,(endtime-starttime).days+1)]
 
 for date in date_series:

@@ -6,20 +6,30 @@ Input file : None
 Output file: tp_20180101.nc
 """
 from ecmwfapi import ECMWFDataServer
- 
-server = ECMWFDataServer()
-server.retrieve({
-    "class"  : "ei",
-    "dataset": "interim",
-    "date"   : "2018-01-01",
-    "expver" : "1",
-    "grid"   : "0.75/0.75",
-    "levtype": "sfc",
-    "param"  : "228.128",
-    "step"   : "12",
-    "stream" : "oper",
-    "time"   : "00:00:00/12:00:00",
-    "type"   : "fc",
-    "format" : "netcdf",
-    "target" : "/storage/data/projects/rci/data/winter_sports/ERA_INTERIM/pr/tp_20180101.nc",
-})
+import datetime
+
+starttime = datetime.datetime.strptime('2018-11-01','%Y-%m-%d')
+endtime = datetime.datetime.strptime('2018-12-31','%Y-%m-%d')
+date_series = [starttime + datetime.timedelta(days=x) for x in range(0,(endtime-starttime).days+1)]
+
+for date in date_series:
+    date_string = date.strftime("%Y-%m-%d")
+    print(date_string)
+    output_file = "/storage/data/projects/rci/data/winter_sports/ERA_INTERIM/pr/download/tp_"+date_string+".nc"
+    serv_list = {
+        "class"  : "ei",
+        "dataset": "interim",
+        "date"   : date_string,
+        "expver" : "1",
+        "grid"   : "0.75/0.75",
+        "levtype": "sfc",
+        "param"  : "228.128",
+        "step"   : "12",
+        "stream" : "oper",
+        "time"   : "00:00:00/12:00:00",
+        "type"   : "fc",
+        "format" : "netcdf",
+        "target" : output_file,
+    }
+    server = ECMWFDataServer()
+    server.retrieve(serv_list)
