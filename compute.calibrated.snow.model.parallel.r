@@ -4,10 +4,7 @@
 ##Updated version from compute.climdex.bccaq.r
 ##This computes all the climdex variables
 
-##source('/storage/data/projects/rci/assessments/code/snow.model.r',chdir=T)
-##source('/storage/home/ssobie/code/repos/winter_sports/test.snow.model.r',chdir=T)
-source('/storage/home/ssobie/code/repos/winter_sports/make.snow.netcdfs.r',chdir=T)
-source('/storage/home/ssobie/code/repos/winter_sports/snow.model.functional.r',chdir=T)
+source('/storage/home/ssobie/code/repos/winter_sports/snow.model.calibrated.r',chdir=T)
 
 library(ncdf4)
 library(PCICt)
@@ -18,17 +15,19 @@ registerDoParallel(cores=4) # or some other number that you're comfortable with.
 
 
 ##---------------------------------------------------------------
-separate.into.list <- function(data.subset) {
+separate_into_list <- function(data.subset) {
     return(lapply(seq_len(nrow(data.subset)), function(k) data.subset[k,]))
 }
 
 
-snow.for.model <- function(var.names,
+snow_for_model <- function(var.names,
                            pr.file,tasmax.file,tasmin.file,snow.file,swe.file,
                            data.dir,write.dir,tmp.dir) {
 
   atm <- proc.time()
 
+  ##----------------------
+  ##Slopes and Aspects from PRISM
   as.dir <- '/storage/data/projects/rci/data/prism/'
   slopes.nc <- nc_open(paste0(as.dir,'prism_slopes.nc'))
   bc.slopes <- ncvar_get(slopes.nc,'Band1')/90*pi/2
@@ -40,7 +39,24 @@ snow.for.model <- function(var.names,
   bc.aspects <- ncvar_get(aspects.nc,'Band1')/360*2*pi
   nc_close(aspects.nc)
   ##----------------------
+  ##Calibration Parameters
+  cal.dir <- '/storage/data/projects/rci/data/winter_sports/'
+  scale.nc <- nc_open(paste0(cal.dir,'scale_hyper_snow_calibrated_parameter.nc'))
+  cal.scales <- ncvar_get(scale.nc,'scale')
+  cal.lon <- ncvar_get(scale.nc,'lon')
+  cal.lat <- ncvar_get(scale.nc,'lat')
+  nc_close(scale.nc)
 
+  slope.nc <- nc_open(paste0(cal.dir,'slope_hyper_snow_calibrated_parameter.nc'))
+  cal.slopes <- ncvar_get(slope.nc,'slope')
+  nc_close(slope.nc)
+
+  freq.nc <- nc_open(paste0(cal.dir,'freq_hyper_snow_calibrated_parameter.nc'))
+  cal.freqs <- ncvar_get(freq.nc,'freq')
+  nc_close(freq.nc)
+
+  ##----------------------
+  ##Blank snow files
   depth.nc <- nc_open(paste0(tmp.dir,snow.file),write=TRUE)
   swe.nc <- nc_open(paste0(tmp.dir,swe.file),write=TRUE)
 
@@ -80,7 +96,6 @@ snow.for.model <- function(var.names,
      tasmax.dates[dx] <- paste0(format(tasmax.dates[dx-5],'%Y'),'-02-28')
   }
 
-
   n.time <- length(tasmax.values)
 
   print('Latitude loop')
@@ -90,7 +105,7 @@ snow.for.model <- function(var.names,
   for (i in 1:n.lat) {
     print(paste('Lat: ',i,' in ',n.lat,sep=''))
     pr.subset <- ncvar_get(pr.nc,'pr',start=c(1,i,1),count=c(n.lon,1,-1))*pr.scale
-    pr.list <- separate.into.list(pr.subset)          
+    pr.list <- separate_into_list(pr.subset)          
     snowdepth.list <- lapply(pr.list,function(x){return(as.numeric(rep(NA,n.time)))})
     swe.list <- lapply(pr.list,function(x){return(as.numeric(rep(NA,n.time)))})
     lat_deg <- lat[i]
@@ -116,10 +131,12 @@ snow.for.model <- function(var.names,
       ix.len <- length(ix)
       print(ix.len)
 
-      tasmax.list <- separate.into.list(tasmax.subset[ix,])          
-      tasmin.list <- separate.into.list(tasmin.subset[ix,])          
-      pr.list <- separate.into.list(pr.subset[ix,])          
+      tasmax.list <- separate_into_list(tasmax.subset[ix,])          
+      tasmin.list <- separate_into_list(tasmin.subset[ix,])          
+      pr.list <- separate_into_list(pr.subset[ix,])          
 
+      ##-----------------------
+      ##Slope and Aspects
       aspect.list <- as.list(rep(0,length(pr.list)))
       slopes.list <- as.list(rep(0,length(pr.list)))
       for (j in 1:ix.len) {
@@ -127,6 +144,19 @@ snow.for.model <- function(var.names,
          aspect.list[[j]] <- bc.aspects[which.min(abs(lon[x]-bc.lon)),which.min(abs(lat[i]-bc.lat))]
          slopes.list[[j]] <- bc.slopes[which.min(abs(lon[x]-bc.lon)),which.min(abs(lat[i]-bc.lat))]
       }
+      ##-----------------------
+      ##Calibration Parameters
+      scale.list <- as.list(rep(0,length(pr.list)))
+      slope.list <- as.list(rep(0,length(pr.list)))
+      freq.list <- as.list(rep(0,length(pr.list)))
+
+      for (j in 1:ix.len) {
+         x <- ix[j]
+         scale.list[[j]] <- cal.scales[which.min(abs(lon[x]-cal.lon)),which.min(abs(lat[i]-cal.lat))]
+         slope.list[[j]] <- cal.slopes[which.min(abs(lon[x]-cal.lon)),which.min(abs(lat[i]-cal.lat))]
+         freq.list[[j]] <- cal.freqs[which.min(abs(lon[x]-cal.lon)),which.min(abs(lat[i]-cal.lat))]
+      }
+
       lat.list <- as.list(rep(lat[i],length(pr.list)))
       dates.list <-rep(list(as.character(tasmax.dates)),length(pr.list))
         
@@ -134,8 +164,9 @@ snow.for.model <- function(var.names,
       ptm <- proc.time()          
 
       snow.objects <- foreach(precip_mm=pr.list,Tmax_C=tasmax.list,Tmin_C=tasmin.list,Date=dates.list,lat_deg=lat.list,
-                              slope=slopes.list,aspect=aspect.list,.inorder=TRUE) %dopar% {
-                              snow.final <- snow.melt(precip_mm,Tmax_C,Tmin_C,Date,lat_deg,slope,aspect)                          
+                              slope=slopes.list,aspect=aspect.list,
+                              cal_scale=scale.list,cal_slope=slope.list,cal_freq=freq.list,.inorder=TRUE) %dopar% {
+                              snow.final <- snow_melt(precip_mm,Tmax_C,Tmin_C,Date,lat_deg,slope,aspect,cal_scale,cal_slope,cal_freq)
                               }          
       print('Done with snow model')
       print('Elapsed time')
@@ -189,28 +220,36 @@ if (reanalysis) {
   snow.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/',gcm,'/')  ##For empty snow files
   data.dir <-  paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/',gcm,'/') ##For GCM-PRISM files    
   write.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/calibrated/' ##Write location   
+
+  pr.file <- paste0('pr_gcm_prism_',gcm,'_19790101-20181031.nc')
+  tasmax.file <- paste0('tasmax_gcm_prism_',gcm,'_19790101-20181031.nc')
+  tasmin.file <- paste0('tasmin_gcm_prism_',gcm,'_19790101-20181031.nc')
+
+  snow.file <- paste0('snowdepth_BCCAQ2-PRISM_',gcm,'_19790101-20181031.nc')
+  swe.file <- paste0('swe_BCCAQ2-PRISM_',gcm,'_19790101-20181031.nc')
+
 } else {
+
   ##-------------
   ##For GCMS
   data.dir <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/',gcm,'/')
   snow.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/snow_model/' 
   write.dir <- data.dir
-}
-
-tmp.dir <- tmpdir ##'/local_temp/ssobie/snow/'
-
-  if (!file.exists(tmp.dir)) {
-    dir.create(tmp.dir,recursive=T)
-  }
 
   pr.file <- paste0('pr_gcm_prism_',gcm,'_allBC_TPS_1950-2100.nc')
   tasmax.file <- paste0('tasmax_gcm_prism_',gcm,'_allBC_TPS_1950-2100.nc')
   tasmin.file <- paste0('tasmin_gcm_prism_',gcm,'_allBC_TPS_1950-2100.nc')
 
-  make_snow_netcdf_files(gcm,run)
-
   snow.file <- paste0('snowdepth_BCCAQ2-PRISM_',gcm,'_19500101-21001231.nc')
   swe.file <- paste0('swe_BCCAQ2-PRISM_',gcm,'_19500101-21001231.nc')
+
+}
+
+tmp.dir <- paste(tmpdir,'/cal_snow_',gcm,'/')
+
+  if (!file.exists(tmp.dir)) {
+    dir.create(tmp.dir,recursive=T)
+  }
                        
   file.copy(from=paste0(data.dir,pr.file),to=tmp.dir,overwrite=TRUE)
   file.copy(from=paste0(data.dir,tasmax.file),to=tmp.dir,overwrite=TRUE)
@@ -218,7 +257,7 @@ tmp.dir <- tmpdir ##'/local_temp/ssobie/snow/'
   file.copy(from=paste0(snow.dir,snow.file),to=tmp.dir,overwrite=TRUE)
   file.copy(from=paste0(snow.dir,swe.file),to=tmp.dir,overwrite=TRUE)
 
-  second <- snow.for.model(var.names=c('snowdepth','swe'),
+  second <- snow_for_model(var.names=c('snowdepth','swe'),
                            pr.file,tasmax.file,tasmin.file,snow.file,swe.file,
                            data.dir,write.dir,tmp.dir)
   file.copy(from=paste0(tmp.dir,snow.file),to=write.dir,overwrite=TRUE)

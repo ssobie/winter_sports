@@ -26,55 +26,46 @@ compare.precip <- function(sim.dates,pillow.dates,season.dates,sim.pr,pillow.pr)
      print(sum(is.na(pillow.pr[asp.bnds[1]:asp.bnds[2]])))
      print(diff(asp.bnds))
    }
-browser()
 }
 
 
 ##Slope and Aspect Values
-model <- 'NCEP2'
+model <- 'ERA'
 type <- 'SWE'
 
 
 sites <- c('spuzzum_creek','upper_squamish','chilliwack_river','tenquille_lake')
 site.names <- c('Spuzzum Creek','Upper Squamish','Chilliwack River','Tenquille Lake')
+
 slen <- 101
 
-##    plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/'
-##    png(file=paste0(plot.dir,model,'.SWE.pillow.series.101.png'),width=1000,height=900)
-##    par(mfrow=c(4,1),oma=c(1,2,1,1))    
+plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/'
+png(file=paste0(plot.dir,'ERA.PNWNAmet.SWE.pillow.accumulated.precipitation.png'),width=1000,height=900)
+par(mfrow=c(4,1),oma=c(1,2,1,1))    
 
 results.matrix <- matrix(0,nrow=15,ncol=length(sites))
 
 ##Loop over sites
 
 for (i in seq_along(sites)) {
-    i <- 1
+    
     site <- sites[i]
     print(site)
-    ##if (site=='spuzzum_creek') {
-    ##clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_',model,'_800m_data_193_121.csv')
-    ##} else {
-        clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_',model,'_800m_data.csv')
-    ##}
+    clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_',model,'_800m_data.csv')
     clim.data <- read.csv(clim.file,header=T,as.is=T)
     sim.dates <- clim.data$Dates
 
+    pnw.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_PNWNAmet_800m_data.csv')
+    pnw.data <- read.csv(pnw.file,header=T,as.is=T)
+    pnw.dates <- pnw.data$Dates
+
     dates.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/snow_seasons/',site,'_season_dates.csv') 
     season.dates <- read.csv(dates.file,header=T,as.is=T)
+    season.dates <- season.dates[as.Date(season.dates$End) < as.Date('2012-12-31'),]
     pillow.starts <- as.numeric(format(as.Date(season.dates$Start),'%j'))
     pillow.ends <- as.numeric(format(as.Date(season.dates$End),'%j'))
     pillow.lengths <- as.numeric(season.dates$Length)
 
-    pack.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/',site,'.',tolower(model),'.snow.101.csv')
-    pack.sims <- read.csv(pack.file,header=T,as.is=T)
-    swe.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sims/',site,'.',tolower(model),'.swe.101.csv')
-    swe.sims <- read.csv(swe.file,header=T,as.is=T)
-
-    sim.years <- unique(format(as.Date(sim.dates),'%Y'))
-    ylen <-  length(sim.years)
-
-    year.match <- as.numeric(sim.years) %in% as.numeric((format(as.Date(season.dates$Start),'%Y')))
-    
     coords <- get.coordinates(site)
     lat.bnds <- coords[2]
     elev <- coords[3]
@@ -95,6 +86,7 @@ for (i in seq_along(sites)) {
     pillow.subset <- pillow.dates %in% format(as.Date(sim.dates),'%Y-%m-%d')
     
     cumulative.sim.pr <- clim.data$Pr*0
+    cumulative.pnw.pr <- pnw.data$Pr*0
     cumulative.asp.pr <- pillow.precip*0
 
     se.len <- nrow(season.dates)
@@ -102,25 +94,43 @@ for (i in seq_along(sites)) {
     for (j in 1:se.len) {
 
       sst <- grep(season.dates$Start[j],sim.dates)  
-      sen <- grep(season.dates$End[j],sim.dates)  
+      sen <- grep(season.dates$Peak[j],sim.dates)  
+      wst <- grep(season.dates$Start[j],pnw.dates)  
+      wen <- grep(season.dates$Peak[j],pnw.dates)  
       pst <- grep(season.dates$Start[j],pillow.dates)  
       pen <- grep(season.dates$End[j],pillow.dates)  
       pslct <- (pillow.dates < pillow.dates[pen]) & (pillow.dates > pillow.dates[pst])       
       cumulative.sim.pr[sst:sen] <- cumsum(clim.data$Pr[sst:sen])    
+      cumulative.pnw.pr[wst:wen] <- cumsum(pnw.data$Pr[wst:wen])    
       cumulative.asp.pr[pst:pen] <- pillow.swe[pst:pen] ##   cumsum(pillow.precip[pst:pen])    
 
+
     }
-    ##plot(as.Date(sim.dates),cumulative.sim.pr,xlim=as.Date(c('1992-01-01','2012-12-31')))
-##    plot(as.Date(sim.dates),cumulative.sim.pr,xlim=as.Date(c('1999-01-01','2018-12-31')),col='blue')
-##    points(as.Date(pillow.dates),cumulative.asp.pr,lwd=3,col='black')
+    ##plot(as.Date(sim.dates),cumulative.sim.pr,xlim=as.Date(c('1990-01-01','2012-12-31')))
+    par(mar=c(4,6,2,2))
+
+    plot(as.Date(sim.dates),cumulative.sim.pr,xlim=as.Date(c('1992-06-01','2012-08-31')),
+    col='blue',type='l',lwd=3,ylim=c(0,3000),
+    xlab='Date',ylab='SWE (mm)',yaxs='i',
+    cex.axis=1.75,cex.lab=1.75,cex.main=2)
+    text(as.Date('1996-01-01'),2500,site.names[i],cex=2.5)
+    lines(as.Date(pnw.dates),cumulative.pnw.pr,xlim=as.Date(c('1990-01-01','2012-12-31')),col='green',lwd=3)
+    points(as.Date(pillow.dates),cumulative.asp.pr,pch=18,col='black',cex=1.25)
     
-    plot(as.Date(sim.dates)[date.subset],clim.data$Tas[date.subset]-pillow.tas[pillow.subset],xlim=as.Date(c('1998-01-01','2018-12-31')),col='blue',type='l')
+##    plot(as.Date(sim.dates)[date.subset],clim.data$Tas[date.subset]-pillow.tas[pillow.subset],xlim=as.Date(c('1998-01-01','2018-12-31')),col='blue',type='l')
     ##lines(as.Date(pillow.dates),pillow.tas,lwd=3,col='black')
     print(mean(clim.data$Tas[date.subset]-pillow.tas[pillow.subset],na.rm=T))
+    if (i==4) {
+       legend('bottomleft',legend=c('ASP Obs.','ERA-Int','PNWNAmet'),col=c('black','blue','green'),pch=16,cex=1.75)
+    }
           
 
-browser()
+
 }
+dev.off()
+
+browser()
+
       par(mar=c(4,6,2,2))
       plot(as.Date(sim.dates[date.subset]),apply(swe.sims[date.subset,],1,mean),xlab='Date',ylab='SWE (mm)',yaxs='i',
            type='l',lwd=3,col='blue',main='',cex.axis=1.75,cex.lab=1.75,cex.main=2,

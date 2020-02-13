@@ -27,7 +27,8 @@ site.names <- c('Spuzzum Creek','Upper Squamish','Chilliwack River','Tenquille L
 slen <- 100
 
     plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/'
-    png(file=paste0(plot.dir,model,'.SWE.normalized.pillow.series.1001.2018.png'),width=1000,height=900)
+    ##png(file=paste0(plot.dir,model,'.SWE.normalized.pillow.series.1001.2018.png'),width=1000,height=900)
+    png(file=paste0(plot.dir,model,'.SWE.normalized.pillow.series.1001.2019.png'),width=6,height=5,units='in',res=600,pointsize=6,bg='white')
     par(mfrow=c(4,1),oma=c(1,2,1,1))    
 
 
@@ -136,12 +137,12 @@ for (i in seq_along(sites)) {
       par(mar=c(4,6,2,2))
       plot(as.Date(dates[date.subset]),apply(swe.sims[date.subset,],1,mean),xlab='Date',ylab='SWE (mm)',yaxs='i',
            type='l',lwd=3,col='blue',main='',cex.axis=1.75,cex.lab=1.75,cex.main=2,xaxs='i',
-           xlim=c(as.Date('1992-08-01'),as.Date('2018-08-01')),ylim=c(0,3000))
+           xlim=c(as.Date('1992-08-01'),as.Date('2018-09-01')),ylim=c(0,3000))
       apply(swe.sims[date.subset,],2,function(x,y){lines(y,x,col='lightblue',lwd=2.5)},as.Date(dates[date.subset]))
       points(as.Date(snodas.dates),snodas.swe,col=alpha('red',0.5),lwd=1)
       points(as.Date(pillow.dates),pillow.swe,pch=16,col='black')
-      lines(as.Date(dates[date.subset]),apply(swe.sims,1,mean)[date.subset],col='blue',lwd=3.5)
-      text(as.Date('1995-01-01'),2500,site.names[i],cex=2.5)
+      lines(as.Date(dates[date.subset]),apply(swe.sims,1,mean)[date.subset],col='blue',lwd=2.75)
+      text(as.Date('1996-01-01'),2500,site.names[i],cex=2.5)
       if (i==4) { 
          legend('bottomleft',legend=c('ASP Obs.','SNODAS',model,paste0(model,' Mean')),col=c('black','red','lightblue','blue'),pch=16,cex=1.75)
       }

@@ -1,6 +1,8 @@
 ##******************************************************************************
 ##******************************************************************************
 
+source('/storage/data/projects/rci/stat.downscaling/bccaq2/code/new.netcdf.calendar.R',chdir=T)
+
 library(ncdf4)
 library(PCICt)
 library(fields)
@@ -8,113 +10,148 @@ library(fields)
 ################################################################################
 ##Calculate BCCAQ anomalies
 
-create.anoms <- function(var.name,tmp.dir,file,var.mon) {
 
-  ##For mean subset 1971-2000
-  anoms.file <- gsub(pattern='_day_',replacement='_anoms_',file)
-  file.copy(from=paste0(tmp.dir,file),to=paste0(tmp.dir,anoms.file),overwrite=T)
-  Sys.sleep(5)
-  if (!file.exists(paste0(tmp.dir,anoms.file)))
-    browser()
-  
-  nc <- nc_open(paste0(tmp.dir,file))
-  var.data <- ncvar_get(nc,var.name)
-  time.atts <- ncatt_get(nc,'time')
-  time.calendar <- time.atts$calendar
-  time.units <- time.atts$units
-  time.values <- ncvar_get(nc,'time')
-  origin.pcict <- as.PCICt(strsplit(time.units, ' ')[[1]][3],
-                           cal=time.calendar)  
+##-----------------------------------------------------------------
+retrieve_time_info <- function(nc,interval) {
+  dates <- netcdf.calendar(nc)
+  ymax <-  gsub('-','',format(head(dates,1),'%Y'))
+  ymin <-  gsub('-','',format(tail(dates,1),'%Y'))
 
-  if (grepl('NCEP2',file)) {
-     var.dates <- origin.pcict + time.values*3600                            
+  bnds <- strsplit(interval,'-')[[1]]
+  yst <- head(grep(bnds[1],dates),1)
+  yen <- tail(grep(bnds[2],dates),1)
+  yct <- yen-yst+1
+
+  rv <- list(dates=dates,ymax=ymax,ymin=ymin,
+             yst=yst,yen=yen,yct=yct)
+  return(rv)
+}
+
+##-----------------------------------------------------------------
+
+baseline_climatologies <- function(var.name,var.clim,monthly.fac,monthly.ts.fac,mon.facs) {
+  var.mon <- apply(var.clim,c(1,2),function(x,fac){tapply(x,fac,mean,na.rm=T)},monthly.fac)
+  if (var.name=='pr') {
+    var.test <- apply(var.clim,c(1,2),function(x,fac){tapply(x,fac,sum,na.rm=T)},monthly.ts.fac)
+    var.test[var.test <=0] <- NA
+    var.mon <-  apply(var.test,c(2,3),function(x,fac){tapply(x,fac,mean,na.rm=T)},mon.facs)
+    rm(var.test)
   }
-  if (grepl('ERA',file)) {
-     var.dates <- origin.pcict + time.values*86400
-  }
+  rm(var.clim)
+  return(var.mon)
+}
+
+##-----------------------------------------------------------------
+
+create_anoms <- function(var.name,nc,anc,var.dates,yst,yen) {
+
+  ###Baseline time factors
+  clim.monthly.fac <- as.factor(format(var.dates[yst:yen],'%m'))
+  clim.monthly.ts.fac <- as.factor(format(var.dates[yst:yen],'%Y-%m'))
+  clim.mon.facs <- as.factor(format(as.Date(paste(levels(clim.monthly.ts.fac),'-01',sep='')),'%m'))
+
+  lat <- ncvar_get(nc,'lat')
+  n.lat <- length(lat)
+  l.width <- 2
+  l.seq <- seq(1,368,by=l.width) ##Specific to PNWNAmet
+
+  ##seq(1,192,by=8) ###For ERA5
+  lon <- ncvar_get(nc,'lon')
+  n.lon <- length(lon)
+  time <- ncvar_get(nc,'time')
+  n.time <- length(time)
 
   monthly.fac <- as.factor(format(var.dates,'%m'))
-  
-  ##Load full time series and take anomalies from this
-  var.anoms <- var.data*0
-  for(mn in 1:12) {
-    print(mn)
-    var.mean <- var.mon[mn,,]
-    var.ix <- which(monthly.fac==sprintf('%02d',mn))
-    mlen <- length(var.ix)
-    for (i in 1:mlen) {
-      ix <- var.ix[i]
-      if (var.name=='pr')
-        var.anoms[,,ix] <- var.data[,,ix]/var.mean
-      if (grepl('tas',var.name))
-        var.anoms[,,ix] <- var.data[,,ix] - var.mean
 
+  for (ltx in l.seq) {
+    print(paste0('Subset: ',ltx,' in 368')) ###192'))
+    var.data <- ncvar_get(nc,var.name,start=c(1,ltx,1),count=c(-1,l.width,-1))
+    if (var.name=='pr') {
+       var.data[var.data<0] <- 0
     }
+    var.clim <- var.data[,,yst:yen]
+    var.mon <- baseline_climatologies(var.name,var.clim,
+                                      clim.monthly.fac,
+                                      clim.monthly.ts.fac,
+                                      clim.mon.facs)
+    rm(var.clim)
+    ##Load full time series and take anomalies from this
+    var.anoms <- var.data*0
+    for(mn in 1:12) {
+      print(mn)
+      var.mean <- var.mon[mn,,]
+
+      var.ix <- which(monthly.fac==sprintf('%02d',mn))
+      mlen <- length(var.ix)
+      for (i in 1:mlen) {
+        ix <- var.ix[i]
+        if (var.name=='pr')
+          var.anoms[,,ix] <- var.data[,,ix]/var.mean
+        if (grepl('tas',var.name))
+          var.anoms[,,ix] <- var.data[,,ix] - var.mean
+      }
+    }
+    rm(var.data)
+    rm(var.mean)
+    ncvar_put(anc,varid=var.name,vals=var.anoms,start=c(1,ltx,1),count=c(n.lon,l.width,n.time))
+    rm(var.anoms)
   }
   nc_close(nc)
-
-  ##Fix the edges for interpolations
-  ncol <- dim(var.data)[2]
-  for (j in 1:(ncol-1)) {
-    ix <- is.na(var.anoms[,j,1])
-    var.anoms[ix,j,] <- var.anoms[ix,(j+1),]    
-  }
-  
-  if (var.name=='pr')
-    var.anoms[is.na(var.anoms)] <- 0
-
-
-  anc <- nc_open(paste0(tmp.dir,anoms.file),write=TRUE)
-  ncvar_put(anc,varid=var.name,vals=var.anoms)
   nc_close(anc)
-  return(anoms.file)
+  gc()
 }
 
-bccaq.anomalies <- function(var.name,gcm,tmp.dir,base.file,past.file) {
+##-----------------------------------------------------------------
+
+
+bccaq_anomalies <- function(var.name,gcm,scenario,interval,base.dir,tmp.dir) {
   print(paste('BCCAQ Anomalies: ',gcm,', ',var.name,sep=''))
 
-  print(base.file)
-  gnc <- nc_open(paste0(tmp.dir,base.file))
-  time.atts <- ncatt_get(gnc,'time')
-  time.calendar <- time.atts$calendar
-  time.units <- time.atts$units
-  time.values <- ncvar_get(gnc,'time')
-  origin.pcict <- as.PCICt(strsplit(time.units, ' ')[[1]][3],
-                           cal=time.calendar)  
-  if (grepl('NCEP2',base.file)) {
-     var.dates <- origin.pcict + time.values*3600                            
+  gcm.dir <- paste(base.dir,gcm,'/',sep='')
+  var.file <- list.files(path=gcm.dir,pattern=paste(var.name,'_BCCAQ2_',sep=''))
+  if (!grepl('TPS',var.file)) {
+     stop('Specific to PNWNAmet. Make sure the 368 loop matches the dimensions of the file')
   }
-  if (grepl('ERA',base.file)) {
-     var.dates <- origin.pcict + time.values*86400
-  }
+  print(var.file)
+  file.copy(from=paste0(base.dir,gcm,'/',var.file),to=tmp.dir,overwrite=TRUE)
+  Sys.sleep(5)
+  var.tmp.file <- paste0(tmp.dir,'/',var.file)
 
-  monthly.fac <- as.factor(format(var.dates,'%m'))
-  monthly.ts.fac <- as.factor(format(var.dates,'%Y-%m'))
-  mon.facs <- as.factor(format(as.Date(paste(levels(monthly.ts.fac),'-01',sep='')),'%m'))
-  var.data <- ncvar_get(gnc,var.name)
-  var.mon <- apply(var.data,c(1,2),function(x,fac){tapply(x,fac,mean,na.rm=T)},monthly.fac)
-  if (var.name=='pr') {
-    var.data[var.data <=0] <- NA    
-    var.test <- apply(var.data,c(1,2),function(x,fac){tapply(x,fac,sum,na.rm=T)},monthly.ts.fac)
-    var.mon <-  apply(var.test,c(2,3),function(x,fac){tapply(x,fac,mean,na.rm=T)},mon.facs)
-  }
-##browser()
-  nc_close(gnc)
-  ##------------------------------------  
+  ##For mean subset 1981-2010
+  anoms.file <- gsub(pattern='_BCCAQ2_',replacement='_anoms_BCCAQ2_',var.file)
+  anoms.tmp.file <- paste0(tmp.dir,'/',anoms.file)
+  print('Anoms file')
+  print(anoms.file)
+  file.copy(from=var.tmp.file,to=anoms.tmp.file,overwrite=T)
+  Sys.sleep(5)
+  if (!file.exists(anoms.tmp.file))
+    stop('Anomaly copy failed')
 
-  anoms.file <- create.anoms(var.name,tmp.dir,past.file,var.mon)
+  nc <- nc_open(var.tmp.file)
+  anc <- nc_open(anoms.tmp.file,write=TRUE)
+  print(anc)
+  ##Time series and climatology subset
+  time.info <- retrieve_time_info(nc,interval)
+  print('Calculate anomalies')
+  anoms.past <- create_anoms(var.name,nc,anc,
+                             time.info$dates,
+                             time.info$yst,
+                             time.info$yen)
   return(anoms.file)
 }
 
-interp.bccaq <- function(var.name,gcm,interval,tmp.dir,anoms.file,grid.file) {
+##-----------------------------------------------------------------
+
+interp_bccaq <- function(var.name,gcm,interval,tmp.dir,anoms.file,grid.file) {
   print(paste('Interpolate Anomalies: ',gcm,', ',var.name,', ',interval,sep=''))
-  interp.file <- gsub(pattern='_anoms_QDM_',replacement='_anoms_interp_',anoms.file)
+  interp.file <- gsub(pattern='_anoms_BCCAQ2_',replacement='_anoms_interp_',anoms.file)
   system(paste('cdo -s remapbil,',grid.file,' ',tmp.dir,anoms.file,' ',tmp.dir,interp.file,sep=''))
   return(interp.file)
 }
 
-daily.prism.scale <- function(var.name,gcm,tmp.dir,interp.file,prism.dir) {
-  print(paste('Daily PRISM: ',gcm,', ',var.name,'19790101-20181031',sep=''))
+##-----------------------------------------------------------------
+
+daily_prism_scale <- function(var.name,gcm,tmp.dir,interp.file,prism.dir) {
   
   prism.var <- switch(var.name,
                       pr='pr',
@@ -138,13 +175,7 @@ daily.prism.scale <- function(var.name,gcm,tmp.dir,interp.file,prism.dir) {
   time.values <- ncvar_get(bnc,'time')
   origin.pcict <- as.PCICt(strsplit(time.units, ' ')[[1]][3],
                            cal=time.calendar)  
-
-  if (grepl('NCEP2',interp.file)) {
-     var.dates <- origin.pcict + time.values*3600                            
-  }
-  if (grepl('ERA',interp.file)) {
-     var.dates <- origin.pcict + time.values*86400
-  }
+  var.dates <- origin.pcict + time.values*86400
 
   monthly.fac <- as.factor(format(var.dates,'%m'))
 
@@ -178,12 +209,9 @@ daily.prism.scale <- function(var.name,gcm,tmp.dir,interp.file,prism.dir) {
         if (var.name=='pr') {
           var.sub <- var.data[,,ix]*prism.mean
         }
-          ##var.adjust[,10:nlat,ix] <- var.data[,10:nlat,ix]*prism.mean
         if (grepl('tas',var.name)) {
           var.sub <- var.data[,,ix] + prism.mean
         }
-          ##var.adjust[,10:nlat,ix] <- var.data[,10:nlat,ix] + prism.mean
-        ##var.sub[flags] <- NA        
         var.adjust[,,ix] <- var.sub
       }##Loop over indices    
     }##Loop over Months
@@ -203,47 +231,47 @@ daily.prism.scale <- function(var.name,gcm,tmp.dir,interp.file,prism.dir) {
 ################################################################################
 ##******************************************************************************
 
-run.adjust <- function() {
-
-  ##Requires 1971-2000 (or equivalent base period) in the /baseline directory to create anomalies from the full period
-  ## (usually 1950-2000 and 2001-2100). Both of these are created using extract.bccaq.gcm.r
-  ##Also need the PRISM climatologies (also using extract.bccaq.gcm.r).
-
-  tmp.dir <- '/local_temp/ssobie/prism/'
-  if (!file.exists(tmp.dir))
-     dir.create(tmp.dir,recursive=T)
-
-  base.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/'
-  prism.dir <- '/storage/data/projects/rci/data/winter_sports/PRISM/'
-  grid.file <- '/storage/home/ssobie/grid_files/van.whistler.modis.grid.txt'
-
-  var.list <- c('tasmax','tasmin','pr')
-  ##var.list <- 'pr'
-##  gcm.list <- c('ACCESS1-0','CCSM4','CanESM2','CNRM-CM5','CSIRO-Mk3-6-0','GFDL-ESM2G',
-##                'HadGEM2-CC','HadGEM2-ES','inmcm4','MIROC5','MPI-ESM-LR','MRI-CGCM3')
-  gcm.list <- 'ERA'
-  
-
-  for (var.name in var.list) {
-    print(var.name)
-    for (gcm in gcm.list) {
-      print(gcm)
-      base.file <- paste0(var.name,'_day_QDM_',gcm,'_1981-2010.nc')
-      file.copy(from=paste0(base.dir,'baseline/',base.file),to=tmp.dir,overwrite=TRUE)
-      past.file <- paste0(var.name,'_day_QDM_',gcm,'_19790101-20181031.nc')
-      file.copy(from=paste0(base.dir,gcm,'/',past.file),to=tmp.dir,overwrite=TRUE)
-      anoms.file <- bccaq.anomalies(var.name,gcm,tmp.dir,base.file,past.file)
-      file.copy(from=paste0(tmp.dir,anoms.file),to=paste0(base.dir,gcm,'/'),overwrite=TRUE)      
-      interp.file <- interp.bccaq(var.name,gcm,'1979-2018',tmp.dir,anoms.file,grid.file)
-      file.copy(from=paste0(tmp.dir,interp.file),to=paste0(base.dir,gcm,'/'),overwrite=TRUE)
-      adjusted.file <- daily.prism.scale(var.name,gcm,tmp.dir,interp.file,prism.dir)
-      file.copy(from=paste0(tmp.dir,adjusted.file),to=paste0(base.dir,gcm,'/'),overwrite=TRUE)
-
-    }
-  }  
+args <- commandArgs(trailingOnly=TRUE)
+for(i in 1:length(args)){
+    eval(parse(text=args[[i]]))
 }
 
-run.adjust()
+###gcm <- 'ACCESS1-0'
+###var.name <- 'tasmax'
+interval <- '1981-2010' ##Baseline for the anomalies
+tmp.dir <- tmpdir
+var.name <- varname
+###tmp.dir <- '/local_temp/ssobie/prism/'
+
+if (!file.exists(tmp.dir))
+   dir.create(tmp.dir,recursive=T)
+
+base.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/'
+prism.dir <- '/storage/data/projects/rci/data/winter_sports/PRISM/'
+grid.file <- '/storage/home/ssobie/grid_files/van.whistler.modis.grid.txt'
+
+anoms.file <- bccaq_anomalies(var.name,gcm,scenario,interval,base.dir,tmp.dir)
+##print('Copy anomalies back')
+##file.copy(from=paste0(tmp.dir,'/',anoms.file),to=paste0(base.dir,gcm,'/'),overwrite=T)
+##Sys.sleep(5)
+
+##interp.file <- interp_bccaq(var.name,gcm,'1950-2100',tmp.dir,anoms.file,grid.file)
+interp.file <- interp_bccaq(var.name,gcm,'1945-2012',tmp.dir,anoms.file,grid.file)
+##file.copy(from=paste0(tmp.dir,interp.file),to=paste0(base.dir,gcm,'/'),overwrite=TRUE)
+##Sys.sleep(5)
+
+adjusted.file <- daily_prism_scale(var.name,gcm,tmp.dir,interp.file,prism.dir)
+file.copy(from=paste0(tmp.dir,adjusted.file),to=paste0(base.dir,gcm,'/'),overwrite=TRUE)
+
+
+file.remove(from=paste0(tmp.dir,anoms.file))
+file.remove(from=paste0(tmp.dir,interp.file))
+file.remove(from=paste0(tmp.dir,adjusted.file))
+
+
+
+
+
 
 
 

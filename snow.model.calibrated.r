@@ -3,21 +3,17 @@ library(zoo)
 ##-------------------------------------------------------------
 ##Snow/Rain Phase function
 
-hyper.snow.phase <- function(tas,precip_m) {
-
-   coeffs <- list(a=-49.49,b=0.5628,c=1.5,d=1.0209)
-
-   frac <- coeffs$a*(tanh(coeffs$b*(tas-coeffs$c))-coeffs$d)
+hyper_snow_phase <- function(tas,precip_mm,coeffs) {
+   ##D is fixed at 1.0209
+   frac <- coeffs$a*(tanh(coeffs$b*(tas-coeffs$c))-1.0209)
    sample <- runif(length(tas),min=0,max=100)
    test <- sample > frac
-   high.temp <- tas > 7
-   test[high.temp] <- TRUE
    snow.type <- rep(TRUE,length(tas))
    snow.type[test] <- FALSE
 
-   NewSnowWatEq <- precip_m
+   NewSnowWatEq <- precip_mm
    NewSnowWatEq[!snow.type] <- 0
-   R_m <- precip_m
+   R_m <- precip_mm
    R_m[snow.type] <- 0
 
    rv <- list(swe=NewSnowWatEq,rain=R_m)
@@ -26,12 +22,14 @@ hyper.snow.phase <- function(tas,precip_m) {
 
 ##-------------------------------------------------------------
 
-snow.melt <- function(precip_mm, Tmax_C, Tmin_C, Date, lat_deg,slope=0, aspect=0, tempHt=1, windHt=2, groundAlbedo=0.25,
- 		SurfEmissiv=0.95, windSp=1, forest=0, startingSnowDepth_m=0, startingSnowDensity_kg_m3=450){
+snow_melt <- function(precip_mm, Tmax_C, Tmin_C, Date, lat_deg, 
+                      cal_scale, cal_slope, cal_freq, 
+                      slope=0, aspect=0, 
+                      tempHt=1, windHt=2, groundAlbedo=0.25,SurfEmissiv=0.95, windSp=1, 
+                      forest=0, startingSnowDepth_m=0, startingSnowDensity_kg_m3=450) {
 
   ptm <- proc.time()
-
-
+  coeffs <- list(a=cal_scale,b=cal_slope,c=cal_freq)
   Tmax.check <- Tmax_C <  Tmin_C
   Tmax_C[Tmax.check] <- Tmin_C[Tmax.check]+1
  
@@ -47,18 +45,24 @@ snow.melt <- function(precip_mm, Tmax_C, Tmin_C, Date, lat_deg,slope=0, aspect=0
 	
   ##	Converted Inputs :
   Tav <- (Tmax_C+Tmin_C)/2		# degrees C
-  precip_m <- precip_mm ###*0.001	 	# precip in m 
+  precip_m <- precip_mm*0.001	 	# precip in m 
   NewSnowDensity <- 50+3.4*(Tav+15)		# kg/m3
   NewSnowDensity[which(NewSnowDensity < 50)] <- 50
 
   ##--------------------
   ##Separate Precipitation by phase
-  stm <- proc.time()
-  snow.phase <- precip_mm ##hyper.snow.phase(Tav,precip_m)
-  NewSnowWatEq <- snow.phase$swe
-  R_m <- snow.phase$rain        
-  ##print('Phase time')
-  ##print(proc.time()-stm)
+  slen <- 100
+  snow.series <- matrix(0,nrow=length(precip_mm),ncol=slen)
+  rain.series <- matrix(0,nrow=length(precip_mm),ncol=slen)
+  for (k in 1:slen) {
+     snow <- hyper_snow_phase(Tav,precip_mm,coeffs)
+     snow.series[,k] <- snow$swe
+     rain.series[,k] <- snow$rain
+  }
+  NewSnowWatEq <- apply(snow.series,1,mean)/1000
+  R_m <- apply(snow.series,1,mean)/1000
+  R_m[NewSnowWatEq !=0] <- 0
+
   NewSnow <- NewSnowWatEq*WaterDens/NewSnowDensity		# m
 
   ##-----------------------------

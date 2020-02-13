@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=2                                                                                         
+#PBS -l pmem=6000mb
+#PBS -l walltime=12:00:00
+#PBS -d /storage/home/ssobie/code/repos/winter_sports/
+#PBS -o /storage/home/ssobie/code/repos/winter_sports/gp.stdout.log                                                           
+#PBS -e /storage/home/ssobie/code/repos/winter_sports/gp.stderr.log                                                           
+
+cd /storage/home/ssobie/code/repos/winter_sports/
+echo "Current working directory is `pwd`"
+
+module load R
+module load netcdf-bin
+
+
+nohup R CMD BATCH --no-save --no-restore "--args tmpdir='/local_temp/ssobie/prism/' gcm='${gcm}' varname='${varname}'" bccaq.to.prism.r "./${gcm}_${varname}_gcm_prism.out"

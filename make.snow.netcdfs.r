@@ -74,11 +74,12 @@ get_standard_atts <- function(var.name) {
 
 
 
-create.base.files <- function(var.name,gcm,
+create.base.files <- function(var.name,gcm,run,
                               interval,
                               data.dir,write.dir) {
   
   past.file <- list.files(path=data.dir,pattern='pr_gcm_prism',full.name=TRUE)
+
   write.clim.name <- paste0(var.name,'_BCCAQ2-PRISM_',gcm,'_',interval,'.nc') 
 
   nc <- nc_open(past.file,write=FALSE)
@@ -138,7 +139,8 @@ create.base.files <- function(var.name,gcm,
   for (j in 1:length(atts$var))
     ncatt_put(file.nc,varid=var.name,attname=var.names[j],attval=atts$var[[j]])
   ##Global Attributes
-  global.atts <- get_global_atts('ECMWF','ECMWF','ERA-Interim','','r1i1p1')
+  ##global.atts <- get_global_atts('ECMWF','ECMWF','ERA-Interim','','r1i1p1')
+  global.atts <- get_global_atts(gcm,gcm,gcm,'rcp85',run)
   global.names <- names(global.atts)
   for (g in 1:length(global.atts))
     ncatt_put(file.nc,varid=0,attname=global.names[g],attval=global.atts[[g]])
@@ -153,26 +155,27 @@ create.base.files <- function(var.name,gcm,
 ##**************************************************************************************
 ##-----------------------------------------------------------------------------
 ##Climdex from the 800 BCCAQ-PRISM output
-run.bccaq.prism <- function() {
+make_snow_netcdf_files <- function(gcm,run) {
   
-  interval <- '19790101-20181031'
-  
-  data.dir <-  '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/NCEP2/'  
-  write.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/NCEP2/'  
+  interval <- '19500101-21001231'
 
-  gcm.list <- 'NCEP2'
-  for (model in gcm.list) {
-    gcm <- model
+  write.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/snow_model/'  
+   
+  ##gcm.list <- c('ACCESS1-0','CanESM2','CCSM4','CNRM-CM5','CSIRO-Mk3-6-0','GFDL-ESM2G',
+  ##              'HadGEM2-CC','HadGEM2-ES','inmcm4','MIROC5','MPI-ESM-LR','MRI-CGCM3')
+
+  ##for (model in gcm.list) {
+  ##  gcm <- model
     print(gcm)
-
-    first <- create.base.files(var.name='snowdepth',gcm,
+    data.dir <-  paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/',gcm,'/')  
+    first <- create.base.files(var.name='snowdepth',gcm,run,
                                interval,
                                data.dir,write.dir)
-    first <- create.base.files(var.name='swe',gcm,
+    first <- create.base.files(var.name='swe',gcm,run,
                                interval,
                                data.dir,write.dir)
-  }  
+  ##}  
 }
 
 ##**************************************************************************************
-run.bccaq.prism()
+##run.bccaq.prism()

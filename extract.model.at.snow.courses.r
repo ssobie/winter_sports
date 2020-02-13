@@ -23,7 +23,7 @@ get.coordinates <- function(site) {
                       chilliwack_river=c(-121.71667,49.0333,1600),
                       upper_squamish=c(-123.4333,50.1500,1340),
                       wahleach_lake=c(-121.5833,49.2333,1400),
-                      tenquille_lake=c(-122.9333,50.5333,1680))                      
+                      tenquille_lake=c(-122.9333,50.5333,1680))
 
   rv <- coordinates[[site]]
   return(rv)
@@ -82,15 +82,19 @@ get.800m.data <- function(site, pr.nc,tasmax.nc,tasmin.nc) {
              'upper_squamish',
              'wahleach_lake',             
              'tenquille_lake')
-##sites <- 'spuzzum_creek'
+sites <- 'grouse_station'
 
-base.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/'
+base.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/'
+###base.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/'
 
-model <- 'ERA'
+model <- 'PNWNAmet'
 
-pr.file <- paste0('pr_gcm_prism_',model,'_19790101-20181031.nc')
-tasmax.file <- paste0('tasmax_gcm_prism_',model,'_19790101-20181031.nc')
-tasmin.file <- paste0('tasmin_gcm_prism_',model,'_19790101-20181031.nc')
+###pr.file <- paste0('pr_gcm_prism_',model,'_19790101-20181031.nc')
+###tasmax.file <- paste0('tasmax_gcm_prism_',model,'_19790101-20181031.nc')
+###tasmin.file <- paste0('tasmin_gcm_prism_',model,'_19790101-20181031.nc')
+pr.file <- paste0('pr_gcm_prism_allBC_TPS_1945-2012.nc')
+tasmax.file <- paste0('tasmax_gcm_prism_allBC_TPS_1945-2012.nc')
+tasmin.file <- paste0('tasmin_gcm_prism_allBC_TPS_1945-2012.nc')
 
 pr.nc <- nc_open(paste(base.dir,model,'/',pr.file,sep=''))
 tasmax.nc <- nc_open(paste(base.dir,model,'/',tasmax.file,sep=''))
