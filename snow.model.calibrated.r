@@ -17,6 +17,7 @@ hyper_snow_phase <- function(tas,precip_mm,coeffs) {
    R_m[snow.type] <- 0
 
    rv <- list(swe=NewSnowWatEq,rain=R_m)
+
    return(rv)
 }
 
@@ -60,7 +61,7 @@ snow_melt <- function(precip_mm, Tmax_C, Tmin_C, Date, lat_deg,
      rain.series[,k] <- snow$rain
   }
   NewSnowWatEq <- apply(snow.series,1,mean)/1000
-  R_m <- apply(snow.series,1,mean)/1000
+  R_m <- apply(rain.series,1,mean)/1000
   R_m[NewSnowWatEq !=0] <- 0
 
   NewSnow <- NewSnowWatEq*WaterDens/NewSnowDensity		# m
@@ -197,8 +198,8 @@ snow_melt <- function(precip_mm, Tmax_C, Tmin_C, Date, lat_deg,
   ##print('Loop time')
   ##print(proc.time()-ltm)
 
-  Results <- list(snowdepth=SnowDepth,swe=SnowWaterEq,snowfall=NewSnow,snowdense=DensityPerc,swe=SnowWaterEq)
+  ##Results <- list(snowdepth=SnowDepth,swe=SnowWaterEq,snowfall=NewSnow,snowdense=DensityPerc)
+  Results <- list(snowdepth=SnowDepth,swe=SnowWaterEq,snowfall=NewSnow,snowdense=DensityPerc,snowseries=apply(snow.series,1,mean))
   ##Rprof(NULL)
-
   return(Results)
 }

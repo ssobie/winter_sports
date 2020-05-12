@@ -65,16 +65,15 @@ for (i in seq_along(sites)) {
     snodas.course.subset <- course.dates %in% format(as.Date(snodas.dates),'%Y-%m-%d')
     snodas.site.bias[i] <- mean((snodas.swe[snodas.date.subset]-course.swe[snodas.course.subset]),na.rm=T)
       
-    swe.era5 <- read.csv(paste0(model.dir,site,'_ERA5_PNWNAmet_PRISM_TPS_snow_model_data.csv'),header=T,as.is=T)
+    swe.era5 <- read.csv(paste0(model.dir,site,'_ERA5_PRISM_snow_model_data.csv'),header=T,as.is=T)
     era5.swe.mean <- swe.era5$SWE*1000 ###apply(swe.era5,1,mean,na.rm=T)
-    swe.pnwnamet <- read.csv(paste0(model.dir,site,'_PNWNAmet_PNWNAmet_PRISM_TPS_snow_model_data.csv'),header=T,as.is=T)
+    swe.pnwnamet <- read.csv(paste0(model.dir,site,'_PNWNAmet_PRISM_snow_model_data.csv'),header=T,as.is=T)
     pnwnamet.swe.mean <- swe.pnwnamet$SWE*1000 ##apply(swe.pnwnamet,1,mean,na.rm=T)
 
     era5.course.bias[i] <- mean((era5.swe.mean[era5.course.subset]-course.swe[course.era5.subset]),na.rm=T)
     pnwnamet.course.bias[i] <- mean((pnwnamet.swe.mean[pnwnamet.course.subset]-course.swe[course.pnwnamet.subset]),na.rm=T)
     era5.snodas.bias[i] <- mean((era5.swe.mean[era5.snodas.match]-snodas.swe[snodas.era5.match]),na.rm=T)      
     pnwnamet.snodas.bias[i] <- mean((pnwnamet.swe.mean[pnwnamet.snodas.match]-snodas.swe[snodas.pnwnamet.match]),na.rm=T)      
-    ##if(site=='palisade_lake'){browser()}
 }        
 
 for (i in seq_along(asps)) {
@@ -98,9 +97,9 @@ for (i in seq_along(asps)) {
     snodas.date.subset <- format(as.Date(snodas.dates),'%Y-%m-%d') %in% pillow.dates
     snodas.pillow.subset <- pillow.dates %in% format(as.Date(snodas.dates),'%Y-%m-%d')
 
-    swe.era5 <- read.csv(paste0(model.dir,asp,'_ERA5_PRISM_TPS_snow_model_data.csv'),header=T,as.is=T)
+    swe.era5 <- read.csv(paste0(model.dir,asp,'_ERA5_PRISM_with_elevation_snow_model_data.csv'),header=T,as.is=T)
     era5.swe.mean <- swe.era5$SWE*1000 ##apply(swe.era5,1,mean,na.rm=T)
-    swe.pnwnamet <- read.csv(paste0(model.dir,asp,'_PNWNAmet_PRISM_TPS_snow_model_data.csv'),header=T,as.is=T)
+    swe.pnwnamet <- read.csv(paste0(model.dir,asp,'_PNWNAmet_PRISM_with_elevation_snow_model_data.csv'),header=T,as.is=T)
     pnwnamet.swe.mean <- swe.pnwnamet$SWE*1000 ##apply(swe.pnwnamet,1,mean,na.rm=T)
 
     snodas.asp.bias[i] <- mean((snodas.swe[snodas.date.subset]-pillow.swe[snodas.pillow.subset]),na.rm=T)      
@@ -131,7 +130,7 @@ sites <- c('shovelnose_mountain','brookmere','lightning_lake','callaghan','orchi
            'palisade_lake','grouse_mountain','dog_mountain','stave_lake','nahatlatch',
            'wahleach','klesilkwa','hamilton_hill','dickson_lake','disappointment_lake',
            'duffey_lake','gnawed_mountain','highland_valley','mcgillivray_pass',
-           'sumallo_river_west','great_bear')
+           'sumallo_river_west')
 ilen <- length(sites)
 asps <- c('upper_squamish','spuzzum_creek','chilliwack_river','tenquille_lake',
            'wahleach_lake','blackwall_peak_pillow')
@@ -156,7 +155,6 @@ site.names <- c('Shovelnose', ##\nMountain',
                 'Highland', ##\nValley',
                 'Mcgillivray', ##\nPass',
                 'Sumallo', ##\nWest',          
-                'Bear', ##(Great)
                 'Squamish', ##Upper\n
                 'Spuzzum', ##\nCreek',
                 'Chilliwack', ##\nRiver',
@@ -212,38 +210,37 @@ leg.title <- 'mm'
 ranked.lons <- order(lons)
 ranked.elevs <- order(elevs)
 
-##png(filename=paste0(plot.dir,'pnwnamet.era5.tps.cal.sites.swe.bias.2020.png'),width=1200,height=700)
-png(file=paste0(plot.dir,'pnwnamet.era5.tps.cal.sites.swe.bias.2020.png'),width=10,height=6,units='in',res=600,pointsize=6,bg='white')
-
+png(filename=paste0(plot.dir,'pnwnamet.era5.elevation.cal.sites.swe.bias.2020.png'),width=700,height=1200)
 layout(mat = matrix(c(1,2),
-                    nrow = 2,
-                    ncol = 1),
-             heights = c(1.6, 1.4),    # Heights of the two rows
+                    nrow = 1,
+                    ncol = 2),
+             heights = c(1.5, 1.5),    # Heights of the two rows
              widths = 1)     # Widths of the two columns
 
-par(mar=c(9,5,2,3))
-plot(0:alen,0:alen,xlab='',ylab='SWE Bias (mm)',yaxs='i',
+par(mar=c(5,10,3,3))
+plot(x=0:alen,y=0:alen,ylab='',xlab='SWE Bias (mm)',yaxs='i',
      col='white',main='',cex.axis=1.75,cex.lab=1.75,cex.main=2,
-     xlim=c(1,alen),ylim=c(-1200,800),axes=FALSE)
-axis(1,at=1:alen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)
-axis(2,at=c(-1200,-400,400,800),label=c(-1200,-400,400,800),cex=1.75,cex.axis=1.75)
-abline(h=seq(-800,400,400),lty=2,col='gray',lwd=2)
-abline(v=1:alen,col='gray')
-abline(h=0,lwd=1.5)
+     ylim=c(0,alen+1),xlim=c(-1200,800),axes=FALSE)
+axis(1,at=seq(-1200,1200,200),seq(-1200,1200,200),cex=1.75,cex.axis=1.75)
+axis(2,at=1:alen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)
+
+abline(v=seq(-1000,1000,200),lty=2,col='gray',lwd=2)
+abline(h=1:alen,col='gray')
+abline(v=0,lwd=2)
 for (j in 1:alen) {
     print(lons[ranked.lons[j]])
     ##boxplot(at=j-0.175,x=cal.mae$era[ranked.lons[j]],add=TRUE,axes=F,boxwex=0.7,col='blue',border='blue')
-    points(x=j-0.175,y=cal.mae$era[ranked.lons[j]],col='blue',pch=18,cex=2.25)
-    points(x=j+0.175,y=cal.mae$pnw[ranked.lons[j]],col='green',pch=18,cex=2.25)
-    points(x=j,y=cal.mae$sno[ranked.lons[j]],pch='-',cex=5,col='red')
+    points(y=j-0.175,x=cal.mae$era[ranked.lons[j]],col='blue',pch=18,cex=2.25)
+    points(y=j+0.175,x=cal.mae$pnw[ranked.lons[j]],col='green',pch=18,cex=2.25)
+    points(y=j,x=cal.mae$sno[ranked.lons[j]],pch='|',cex=5,col='red')
 }
 ##text(x=16.6,y=550,'SNODAS',cex=1.25)
 ##legend('bottomright',leg=c('ERA5','PNWNAmet','SNODAS'),col=c('blue','green','red'),pch=15,cex=1.5)
-box(which='plot',lwd=1.5)
+box(which='plot')
 
 sites <- c('blackwall_peak_course','boston_bar_lower','boston_bar_upper','burwell_lake',
-           'chapman_creek','cornwall_hills','diamond_head','edwards_lake',
-           'hollyburn','hope',
+           'chapman_creek','cornwall_hills','diamond_head','edwards_lake','garibaldi_lake',
+           'great_bear','hollyburn','hope',
            'loch_lomond','lytton','mount_seymour','new_tashme',
            'ottomite','pavilion_mountain',
            'sumallo_river','tenquille_course','whistler_mountain','wolverine_creek' )
@@ -258,6 +255,8 @@ site.names <- c('Blackwall',
                 'Cornwall',
                 'Diamond', 
                 'Edwards', 
+                'Garibaldi',
+                'Great Bear',
                 'Hollyburn',
                 'Hope',
                 'Lomond',
@@ -295,27 +294,26 @@ val.mae <- get_mae_values(sites,asps)
 slen <- length(sites)
 val.mae <- lapply(val.mae,function(x,slen){x[1:slen]},slen)
 
-par(mar=c(9,5,2,9))
-plot(0:elen,0:elen,xlab='',ylab='SWE Bias (mm)',yaxs='i',
+par(mar=c(5,10,3,1))
+plot(x=0:elen,y=0:elen,ylab='',xlab='SWE Bias (mm)',yaxs='i',
      col='white',main='',cex.axis=1.75,cex.lab=1.75,cex.main=2,
-     xlim=c(1,elen),ylim=c(-800,800),axes=FALSE)
-axis(1,at=1:elen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)
-axis(2,at=c(-800,-400,400,800),label=c(-800,-400,400,800),cex=1.75,cex.axis=1.75)
-abline(h=seq(-400,400,400),lty=2,col='gray',lwd=2)
-abline(v=1:alen,col='gray')
-abline(h=0,lwd=1.5)
+     ylim=c(0,elen+1),xlim=c(-1200,800),axes=FALSE)
+axis(1,at=seq(-1200,1200,200),seq(-1200,1200,200),cex=1.75,cex.axis=1.75)
+axis(2,at=1:elen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)
+
+abline(v=seq(-1000,1000,200),lty=2,col='gray',lwd=2)
+abline(h=1:alen,col='gray')
+abline(v=0,lwd=2)
 for (j in 1:elen) {
     print(lons[ranked.lons[j]])
     ##boxplot(at=j-0.175,x=val.mae$era[ranked.lons[j]],add=TRUE,axes=F,boxwex=0.7,col='blue',border='blue')
-    points(x=j-0.175,y=val.mae$era[ranked.lons[j]],col='blue',pch=18,cex=2.25)
-    points(x=j+0.175,y=val.mae$pnw[ranked.lons[j]],col='green',pch=18,cex=2.25)
-    ##points(x=j,y=val.mae$sno[ranked.lons[j]],pch='-',cex=5,col='red')
+    points(y=j-0.175,x=val.mae$era[ranked.lons[j]],col='blue',pch=18,cex=2.25)
+    points(y=j+0.175,x=val.mae$pnw[ranked.lons[j]],col='green',pch=18,cex=2.25)
+    points(y=j,x=val.mae$sno[ranked.lons[j]],pch='|',cex=5,col='red')
 }
-par(xpd=NA)
-legend('topright',inset=c(-0.08,0),leg=c('ERA5','PNW','SNO'),col=c('blue','green','red'),pch=c(18,18,15),pt.cex=c(2,2,1.5),cex=1.5,box.lwd=1.5)
-par(xpd=FALSE)
 
-box(which='plot',lwd=1.5)
+legend('bottomright',leg=c('ERA5','PNWNAmet','SNODAS'),col=c('blue','green','red'),pch=15,cex=1.5)
+box(which='plot')
 
 
 dev.off()

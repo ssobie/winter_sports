@@ -1,10 +1,11 @@
 ##------------------------------------------------------------
 
+source('/storage/home/ssobie/code/repos/winter_sports/site.coordinates.r',chdir=T)
 
 library(ncdf4)
 library(PCICt)
 
-get.station.data <- function(ec.id,stn.dir,
+get_station_data <- function(ec.id,stn.dir,
                              var.name) {
 
   ##EC Station Data
@@ -14,7 +15,9 @@ get.station.data <- function(ec.id,stn.dir,
   return(rv)
 }
 
-get.station.coordinates <- function(site) {
+##-------------------------------------------------------
+
+get_station_coordinates <- function(site) {
 
   coordinates <- list(abbotsford=c(-122.360,49.02528,59),
                       agassiz=c(-121.7597,49.2425,15),
@@ -34,36 +37,55 @@ get.station.coordinates <- function(site) {
   return(rv)
 }
 
-get.coordinates <- function(site) {
+##-------------------------------------------------------
 
-  coordinates <- list(callaghan=c(-123.1036,50.1383278,1009),
-                      orchid_lake=c(-123.0519638,49.53678,1178),
-                      palisade_lake=c(-123.0321944,49.454433,898),
-                      grouse_mountain=c(-123.0774472,49.383655,1126),
-                      dog_mountain=c(-122.96255,49.37251944,1007),
-                      dickson_lake=c(-122.06984166,49.3168194,1147),
-                      stave_lake=c(-122.315805,49.58030277,1211),
-                      nahatlatch=c(-122.059261,49.825866,1530),
-                      wahleach=c(-121.57945,49.2298694,1395),
-                      klesilkwa=c(-121.3086527,49.129438,610),
-                      lightning_lake=c(-120.850205,49.044788,1254),
-                      brookmere=c(-120.87397,49.815027,994),
-                      shovelnose_mountain=c(-120.864175,49.8546305,1456),
-                      hamilton_hill=c(-120.7955805,49.4988027,1477))
+get_calibrated_parameters <- function(coords,model) {
+
+  base.dir <- '/storage/data/projects/rci/data/winter_sports/'
+  coeff.files <- list.files(path=base.dir,pattern=paste0('_hyper_snow_calibrated_parameter_',model,'_prism_TPS.nc'))
+  scale.file <- coeff.files[grep('scale',coeff.files)]
+  slope.file <- coeff.files[grep('slope',coeff.files)]
+  freq.file <- coeff.files[grep('freq',coeff.files)]
   
-  rv <- coordinates[[site]]
-  return(rv)
+  scale.nc <- nc_open(paste(base.dir,scale.file,sep=''))
+  slope.nc <- nc_open(paste(base.dir,slope.file,sep=''))
+  freq.nc <- nc_open(paste(base.dir,freq.file,sep=''))
+  
+  ##
+  lon <- ncvar_get(scale.nc,'lon')
+  lat <- ncvar_get(scale.nc,'lat')
+  
+  lon.bnds <- coords[1]
+  lat.bnds <- coords[2]
+  elev <- coords[3]
+  
+  lon.ix <- which.min(abs(lon-lon.bnds))
+  lat.ix <- which.min(abs(lat-lat.bnds))
+  
+  scale.data <- -1 * ncvar_get(scale.nc,'scale',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
+  slope.data <- ncvar_get(slope.nc,'slope',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
+  freq.data <- ncvar_get(freq.nc,'freq',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
+
+  nc_close(scale.nc)
+  nc_close(slope.nc)
+  nc_close(freq.nc)
+
+  rv <- list(a=as.numeric(scale.data),
+             b=as.numeric(slope.data),
+             c=as.numeric(freq.data),
+             d=1.0209)
+  return(rv)  
 }
 
+##-------------------------------------------------------
 
-get.800m.data <- function(coords,model) {
+get_800m_data <- function(coords,model) {
 
-  
-  base.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/',model,'/')
-  
-  pr.file <- paste0('pr_gcm_prism_',model,'_1979-2016.nc')
-  tasmax.file <- paste0('tasmax_gcm_prism_',model,'_1979-2016.nc')
-  tasmin.file <- paste0('tasmin_gcm_prism_',model,'_1979-2016.nc')
+  base.dir <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/',model,'/')
+  gcm.prism.files <- list.files(path=base.dir,pattern=paste0('gcm_prism_',model))
+  pr.file <- gcm.prism.files[grep('pr_gcm',gcm.prism.files)]
+  tasmax.file <- gcm.prism.files[grep('tasmax_gcm',gcm.prism.files)]
+  tasmin.file <- gcm.prism.files[grep('tasmin_gcm',gcm.prism.files)]
   
   pr.nc <- nc_open(paste(base.dir,pr.file,sep=''))
   tasmax.nc <- nc_open(paste(base.dir,tasmax.file,sep=''))
@@ -78,7 +100,7 @@ get.800m.data <- function(coords,model) {
                           cal=time.calendar)
   
   past.values <- ncvar_get(pr.nc,'time')
-  dates <- as.character(format(past.origin + (past.values)*86400/24,'%Y-%m-%d'))
+  dates <- as.character(format(past.origin + (past.values)*86400,'%Y-%m-%d'))
 
   ##
   lon <- ncvar_get(pr.nc,'lon')
@@ -97,7 +119,6 @@ get.800m.data <- function(coords,model) {
   pr.data <- ncvar_get(pr.nc,'pr',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
   tasmax.data <- ncvar_get(tasmax.nc,'tasmax',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
   tasmin.data <- ncvar_get(tasmin.nc,'tasmin',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
-
 
   nc_close(pr.nc)
   nc_close(tasmax.nc)
@@ -118,6 +139,8 @@ get.800m.data <- function(coords,model) {
   return(rv)  
 }
 
+##-------------------------------------------------------
+
 clean <- function(input) {
 
   flag <- is.na(input$data)
@@ -127,15 +150,15 @@ clean <- function(input) {
   return(rv)
 }
 
+##-------------------------------------------------------
 
-
-hyper.snow <- function(pr,tas,coeffs) {
+hyper_snow <- function(pr,tas,coeffs) {
 
         frac <- coeffs$a*(tanh(coeffs$b*(tas-coeffs$c))-coeffs$d)
         sample <- runif(length(tas),min=0,max=100)
         test <- sample > frac
-        high.temp <- tas >= 12
-        test[high.temp] <- TRUE
+        ##high.temp <- tas >= 12
+        ##test[high.temp] <- TRUE
         snow.type <- rep(TRUE,length(tas))
         snow.type[test] <- FALSE
 
@@ -148,45 +171,56 @@ hyper.snow <- function(pr,tas,coeffs) {
         return(rv)
 }
   
+##-------------------------------------------------------
 
-snow.vs.tas <-function(stn.id,stn.name,stn.dir,model,stn.title,y.lim,mark) {
+snow_vs_tas <-function(stn.id,stn.name,stn.dir,model,stn.title,y.lim,mark) {
   
-  tas <- clean(get.station.data(stn.id,stn.dir,'MEAN_TEMP'))
-  pr <- clean(get.station.data(stn.id,stn.dir,'ONE_DAY_PRECIPITATION'))
-  snow <- clean(get.station.data(stn.id,stn.dir,'ONE_DAY_SNOW'))
-  pack <- clean(get.station.data(stn.id,stn.dir,'SNOW_ON_THE_GROUND'))  
+  tas <- clean(get_station_data(stn.id,stn.dir,'MEAN_TEMP'))
+  pr <- clean(get_station_data(stn.id,stn.dir,'ONE_DAY_PRECIPITATION'))
+  snow <- clean(get_station_data(stn.id,stn.dir,'ONE_DAY_SNOW'))
+  pack <- clean(get_station_data(stn.id,stn.dir,'SNOW_ON_THE_GROUND'))  
 
   ##Modelled snow from downscaled data
-  coords <- get.station.coordinates(stn.name)
+  coords <- get_station_coordinates(stn.name)
 
-  data.800 <- get.800m.data(coords,model)
+  ##Save the model series to decrease loading times
+  save.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/'
+  save.file <- paste0(stn.name,'_',model,'_800m_data_series.RData')
+  if (!file.exists(paste0(save.dir,save.file))) {
+     data.800 <- get_800m_data(coords,model)
+     save(data.800,file=paste0(save.dir,save.file))
+  } else {
+     load(paste0(save.dir,save.file)) 
+  }
+
   tas.model <- data.800$tas
   pr.model <- data.800$pr
   model.dates <- data.800$dates
 
-  ##coeffs <- list(a=-49.49,b=0.4128,c=2.6545,d=1.0209)
-  coeffs <- list(a=-49.49,b=0.5628,c=1.5,d=1.0209)
-  model.snow <- hyper.snow(data.800$pr,data.800$tas,coeffs)
+###Load from calibrated model parameters
+  coeffs <- get_calibrated_parameters(coords,model)
 
-  tas.st <- -30:19
-  tas.en <- -29:20
-  tas.sub <- vector(mode='list',length=50)
-  for (j in 1:50) {
+  model.snow <- hyper_snow(data.800$pr,data.800$tas,coeffs)
+
+  tas.st <- -30:29
+  tas.en <- -29:40
+  tas.sub <- vector(mode='list',length=70)
+  for (j in 1:60) {
       tas.sub[[j]] <- tas.model >= tas.st[j] & tas.model < tas.en[j]
   }
 
-  model.snow.matrix <- matrix(0,nrow=50,ncol=100)
+  model.snow.matrix <- matrix(0,nrow=70,ncol=100)
   tas.matrix <- matrix(rep(tas.model,100),nrow=length(tas.model),ncol=100,byrow=F)
   for (k in 1:100) {
-    tmp.snow <- hyper.snow(data.800$pr,data.800$tas,coeffs)$snow
-    for (j in 1:50) {      
+    tmp.snow <- hyper_snow(data.800$pr,data.800$tas,coeffs)$snow
+    for (j in 1:70) {      
       tmp.count <- tmp.snow[tas.sub[[j]]]
       model.snow.matrix[j,k] <- sum(tmp.count>0.1)
     }
   }
   model.sum <- round(apply(model.snow.matrix,1,mean))
   flag <- tmp.snow > 0.1
-  model.hist <- hist(tas.model[flag],breaks=-30:20,plot=F)
+  model.hist <- hist(tas.model[flag],breaks=-30:40,plot=F)
 
   print('Model')
   print(mean(tas.model[flag],na.rm=T))  
@@ -201,48 +235,53 @@ snow.vs.tas <-function(stn.id,stn.name,stn.dir,model,stn.title,y.lim,mark) {
   ##Modelled snow from observed precipitation
   ##Check matching dates
   pr.match <- pr$dates %in% model.dates
+  pr.data <- pr$data[pr.match]
   pr.dates <- pr$dates[pr.match]
   tas.match <- tas$dates %in% model.dates
   tas.dates <- tas$dates[tas.match]
+  tas.data <- tas$data[tas.match]
 
-  pr2.match <- pr.match[pr.dates %in% tas.dates]
-  tas2.match <- tas.match[tas.dates %in% pr.dates]
+  pr2.match <- pr.dates %in% tas.dates
+  tas2.match <- tas.dates %in% pr.dates
 
-  pr.data <- pr$data[pr2.match]
-  tas.data <- tas$data[tas2.match]
-  pr.dates <- pr$dates[pr2.match]
-  tas.dates <- tas$dates[tas2.match]
+  pr.data <- pr.data[pr2.match]
+  tas.data <- tas.data[tas2.match]
+  pr.dates <- pr.dates[pr2.match]
+  tas.dates <- tas.dates[tas2.match]
 
-  sim.snow <- hyper.snow(pr.data,tas.data,coeffs)
+  print(stn.name)
 
-  tas.sub <- vector(mode='list',length=50)
-  for (j in 1:50) {
+
+  sim.snow <- hyper_snow(pr.data,tas.data,coeffs)
+
+  tas.sub <- vector(mode='list',length=70)
+  for (j in 1:70) {
       tas.sub[[j]] <- tas.data >= tas.st[j] & tas.data < tas.en[j]
   }
 
-  sim.snow.matrix <- matrix(0,nrow=50,ncol=100)
+  sim.snow.matrix <- matrix(0,nrow=70,ncol=100)
   tas.matrix <- matrix(rep(tas.data,100),nrow=length(tas.data),ncol=100,byrow=F)
   for (k in 1:100) {
-    tmp.snow <- hyper.snow(pr.data,tas.data,coeffs)$snow
-    for (j in 1:50) {      
+    tmp.snow <- hyper_snow(pr.data,tas.data,coeffs)$snow
+    for (j in 1:70) {      
       tmp.count <- tmp.snow[tas.sub[[j]]]
       sim.snow.matrix[j,k] <- sum(tmp.count>0.1)
     }
   }
   sim.sum <- round(apply(sim.snow.matrix,1,mean))
   flag <- tmp.snow > 0.1
-  sim.hist <- hist(tas.data[flag],breaks=-30:20,plot=F)
+  sim.hist <- hist(tas.data[flag],breaks=-30:40,plot=F)
   print('Simulation')
   print(mean(tas.data[flag],na.rm=T))  
   print(sd(tas.data[flag],na.rm=T))
 
   ##sim.sum <- rep(0,51)
-  ##for (k in 1:50) {
+  ##for (k in 1:70) {
   ##  tas.sub <- tas.data >= tas.st[k] & tas.data < tas.en[k]
   ##  sim.sum[k] <- mean(sim.snow$snow[tas.sub],na.rm=T)
   ##}
   ##flag <- sim.snow$snow > 0.1
-  ##sim.hist <- hist(tas.data[flag],breaks=-30:20,plot=F)
+  ##sim.hist <- hist(tas.data[flag],breaks=-30:40,plot=F)
 
   sim.bins <- sim.hist
   sim.bins$counts <- round(sim.sum)
@@ -270,7 +309,7 @@ snow.vs.tas <-function(stn.id,stn.name,stn.dir,model,stn.title,y.lim,mark) {
   snow.dates <- snow$dates[snow.match]
 
   flag <- snow.data > 0.1
-  obs.hist <- hist(tas.obs[flag],breaks=-30:20,plot=F)
+  obs.hist <- hist(tas.obs[flag],breaks=-30:40,plot=F)
   print('Observations')
   print(mean(tas.obs[flag],na.rm=T))  
   print(sd(tas.obs[flag],na.rm=T))
@@ -278,8 +317,8 @@ snow.vs.tas <-function(stn.id,stn.name,stn.dir,model,stn.title,y.lim,mark) {
 
   print(range(snow.data[flag]))
   snow.hist <- hist(snow.data[flag], breaks=seq(0,150,5),plot=F)
-  obs.sum <- rep(0,50)
-  for (k in 1:50) {
+  obs.sum <- rep(0,70)
+  for (k in 1:70) {
     tas.sub <- tas.obs >= tas.st[k] & tas.obs < tas.en[k]
     obs.sum[k] <- sum(snow.data[tas.sub] > 0.1)
   }
@@ -383,6 +422,7 @@ if (1==1) {
   }
   if (mark==3) {axis(1,at=c(-10,0,10),label=c(-10,0,10),cex.axis=2.25)}
   box(which='plot')
+  
 }
 
 if (1==0) {
@@ -437,9 +477,9 @@ y.lims <- list(c(0,0.23),c(0,0.23),c(0,0.23)) ##list(c(0,90),c(0,130),c(0,110)) 
 base.dir <- '/storage/data/projects/rci/data/assessments/snow_model/station_data/lower_mainland/'
 source('/storage/data/projects/rci/assessments/code/extract.station.daily.r',chdir=T)
 
-model <- 'ERA'
+model <- 'PNWNAmet'
 
-plot.file <- paste('/storage/data/projects/rci/data/winter_sports/ncc_2019/plots/',model,'_comparison_hyper_snow_temperature.2019.png',sep='')
+plot.file <- paste('/storage/data/projects/rci/data/winter_sports/ncc_2019/plots/',model,'_comparison_hyper_snow_temperature.2020.png',sep='')
 ##png(file=plot.file,width=1000,height=1000)
 png(file=plot.file,width=6,height=6,units='in',res=600,pointsize=6,bg='white')
 
@@ -458,7 +498,7 @@ for (i  in seq_along(stn.list)) {
 ##  png(file=plot.file,width=1000,height=300)
 ##  par(mfrow=c(1,3))
 
-  snow.vs.tas(stn.id,stn.info$substn,stn.dir,model,stn.titles[i],y.lims[[i]],mark=i)
+  snow_vs_tas(stn.id,stn.info$substn,stn.dir,model,stn.titles[i],y.lims[[i]],mark=i)
   ##snow.vs.tas(stn.id,stn.info$substn,stn.dir,model)
 
   mtext("Daily Average Temperature (\u00B0C)",side=1,outer=TRUE,cex=1.5,line=3.6)

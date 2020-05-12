@@ -7,8 +7,8 @@ library(RColorBrewer) # to get the sweet color ramps
 ##---------------------------------------------------------------------------------
 ##Snow Colour ramps based on the National Weather Service
 
-snow_colour_ramp <- function(class.breaks,map.range,type) {
-  len <- length(class.breaks)
+snow_colour_ramp <- function(len,type) {
+
   if (type == 'past') {
     color.brewer.swe <- c("#CCFFE5","#99FFFF","#66B2FF","#3333FF","#7F00FF","#CC00CC")
     swe.ramp <- colorRampPalette(colors=color.brewer.swe, bias=1, space = "Lab", interpolate = "linear")
@@ -19,23 +19,17 @@ snow_colour_ramp <- function(class.breaks,map.range,type) {
     swe.ramp <- colorRampPalette(colors=color.brewer.swe, bias=1, space = "Lab", interpolate = "linear")
     rv <- swe.ramp(len-1)
   }
-  if (type =='percent') {  
+  if (type =='percent') {
     rv <- rev(swe.ramp(len-1))
   }
-  if (type == 'diff') {
-    colour.ramp <- get.legend.colourbar(var.name='pr',map.range=map.range,
-                                        my.bp=0,class.breaks=class.breaks,
-                                        type)
-    rv <- colour.ramp                                        
-  }
-
   return(rv)
 }
 
 ##---------------------------------------------------------------------------------
 ##Mapping Component
 
-make_van_whistler_plot <- function(var.name,plot.type,var.title,plot.data,plot.file,class.breaks=NULL,mark,leg.title) {
+make_whistler_panel_plot <- function(var.name,plot.type,var.title,plot.data,class.breaks=NULL,
+                               add.legend=FALSE,leg.title='',x.axis=FALSE,y.axis=FALSE,letter='') {
    map.range <- range(as.matrix(plot.data),na.rm=T)
    if (!is.null(class.breaks)) {
       class.breaks <- class.breaks
@@ -43,61 +37,60 @@ make_van_whistler_plot <- function(var.name,plot.type,var.title,plot.data,plot.f
       class.breaks <- get.class.breaks(var.name,plot.type,map.range,manual.breaks='')      
    }
 
-   
    if (var.name == 'swe' | var.name=='snowdepth') {
-      colour.ramp <- snow_colour_ramp(class.breaks,map.range,plot.type)      
+      colour.ramp <- snow_colour_ramp(length(class.breaks),plot.type)      
    } else {
       colour.ramp <- get.legend.colourbar(var.name=var.name,map.range=map.range,
                                           my.bp=0,class.breaks=class.breaks,
                                          type=plot.type)
    }
+
+   lon <- sort(unique(coordinates(plot.data)[,1]))
+   lat <- sort(unique(coordinates(plot.data)[,2]))
+   snow.matrix <- t(as.matrix(plot.data))[,323:1]
+
    map.class.breaks.labels <- get.class.break.labels(class.breaks)
 
-   if ((var.name=='swe'|var.name=='snowdepth') & plot.type=='past') {
+   if (var.name=='swe'|var.name=='snowdepth') {
       white.class.breaks <- c(class.breaks,100000)                                       
       white.colour.ramp <- c(colour.ramp,'#FFFFFF')
-   } else if ((var.name=='swe'|var.name=='snowdepth') & plot.type=='anomaly') {
-      white.class.breaks <- class.breaks                                     
-      white.colour.ramp <- colour.ramp
    } else {
       white.class.breaks <- class.breaks                                       
       white.colour.ramp <- colour.ramp
    }
 
    alb.crs <- "+init=epsg:4326"
-   lons <- c(-124.0,-123.5, -123.0,-122.5,-122.0,-121.5,-121.0,-120.5,-120.0)
-   lats <- c(48.75, 49.0, 49.25, 49.5, 49.75, 50.0, 50.25, 50.5, 50.75)
+   lons <- c(-123.4, -123.3,-123.2,-123.1,-123.0,-122.9,-122.8,-122.7,-122.6,-122.5)
+   lats <- c(49.6, 49.7, 49.8, 49.9, 50.0, 50.1, 50.2, 50.3)
 
    shape.dir <- '/storage/data/projects/rci/data/assessments/shapefiles/bc'
    bc.shp <- get.region.shape('bc',shape.dir)
 
-
-   map.extent <- extent(c(-123.7,-120.65,48.9,50.8))
+   map.extent <- extent(c(-123.4,-122.4,49.75,50.4))
    crop.extent <- map.extent
 
    plot.window.xlim <- c(map.extent@xmin,map.extent@xmax)
    plot.window.ylim <- c(map.extent@ymin,map.extent@ymax)
 
-   par(mar=c(5,5.5,2,14))
-
+   ##par(mar=mark)
    plot(c(),xlim=plot.window.xlim,ylim=plot.window.ylim,xaxs='i',yaxs='i',
    bg='white',# 'gray94',
    xlab='Longitude (\u00B0E)',ylab='Latitude (\u00B0N)',main='',##plot.title,
-   cex.axis=2.5,cex.lab=2.5,cex.main=2.5,mgp=c(3.5,2,0),axes=F)
+   cex.axis=2.25,cex.lab=2.25,cex.main=2.25,mgp=c(3.5,2,0),axes=F)
    rect(par("usr")[1], par("usr")[3], par("usr")[2], par("usr")[4], col='lightgray')
 
-   axis(2,at=lats,label=lats,cex.axis=2.25)
-   axis(1,at=lons,label=lons,cex.axis=2.25)
+   if (y.axis) {
+     axis(2,at=lats,label=lats,cex.axis=2.0,mgp=c(4,1.5,0))
+   }
+   if (x.axis) {
+     axis(1,at=lons,label=lons,cex.axis=2.0,mgp=c(4,2,0))
+   }
 
    bc.overlay <- 'north_america_state_provincial_boundaries'
    borders.shp <- readOGR(shape.dir, bc.overlay, stringsAsFactors=F, verbose=F)
    wco.shp <- readOGR('/storage/data/projects/rci/data/assessments/shapefiles/bc_common',
                            'ocean_mask', stringsAsFactors=F, verbose=F)
-   shape.dir <- paste0('/storage/data/projects/rci/data/assessments/metro_van/shapefiles/')
-   region <- 'metro_van'
-   region.shp <- spTransform(get.region.shape(region,shape.dir),CRS("+init=epsg:4326")) 
-   whistler.dir <- '/storage/data/projects/rci/data/assessments/whistler/shapefiles/'
-   whistler.shp  <- spTransform(get.region.shape('WhistlerLandscapeUnit',whistler.dir),CRS("+init=epsg:4326")) 
+   shape.dir <- paste0('/storage/data/projects/rci/data/assessments/whistler/shapefiles/')
    shade.dir <- '/storage/data/projects/rci/data/winter_sports/study_map/'
    shade <- raster(paste0(shade.dir,'van_whistler_hillshade.tif'))
 
@@ -112,46 +105,51 @@ make_van_whistler_plot <- function(var.name,plot.type,var.title,plot.data,plot.f
    image(shade,add=T,col = grey(1:100/100))
 
    image(plot.data,add=T,col=alpha(white.colour.ramp,0.8),breaks=white.class.breaks)
-
-   ##plot(spTransform(borders.shp,CRS(alb.crs)),add=TRUE,border='black',cex=0.5)
-   if (var.name=='swe'|var.name=='snowdepth') {
-      plot(spTransform(glacier.shp,CRS(alb.crs)),add=TRUE,col=alpha('white',0.9),border=alpha('white',0.9),cex=0.5)
-   }
+   
+   plot(spTransform(glacier.shp,CRS(alb.crs)),add=TRUE,col='white',border='white',cex=0.5)
 
    plot(lakes.shp,add=TRUE,col='lightgray',border='lightgray',xlim=plot.window.xlim,ylim=plot.window.ylim)
    plot(rivers.shp,add=TRUE,col='lightgray',border='lightgray',xlim=plot.window.xlim,ylim=plot.window.ylim)
  
    plot(spTransform(wco.shp,CRS(alb.crs)),add=TRUE,col='lightgray',border='darkgray',lwd=0.5)
-   ##plot(spTransform(region.shp,CRS(alb.crs)),add=TRUE,border='black',cex=0.5)
-   ##plot(spTransform(whistler.shp,CRS(alb.crs)),add=TRUE,border='black',cex=0.5)
-   plot(spTransform(wash.shp,CRS(alb.crs)),add=TRUE,col='gray',border='black',cex=0.5)
-##   abline(v=lons,lty=3,col='gray',lwd=0.7)
-##   abline(h=lats,lty=3,col='gray',lwd=0.7)
-   site.dir <- '/storage/data/projects/rci/data/winter_sports/study_map/'
-   active.courses <- read.csv(paste0(site.dir,'active_snow_courses.csv'),header=T,as.is=T)
-   inactive.courses <- read.csv(paste0(site.dir,'inactive_snow_courses.csv'),header=T,as.is=T)
-   snow.pillows <- read.csv(paste0(site.dir,'snow_pillow_locations.csv'),header=T,as.is=T)
-   points(active.courses$Lon,active.courses$Lat,pch=24,col='black',bg='black',cex=1.6)
-   points(inactive.courses$Lon,inactive.courses$Lat,pch=25,col='black',bg='black',cex=1.6)
-   points(snow.pillows$Lon,snow.pillows$Lat,pch=23,col='black',bg='black',cex=1.6)
 
-   par(xpd=TRUE)  
-   legend('topright',inset=c(-0.15,0), col = "black", legend=rev(map.class.breaks.labels), pch=22, pt.bg = rev(alpha(colour.ramp,0.8)),
-         pt.cex=3.55, y.intersp=0.8, title.adj=0.2, title=leg.title, xjust=0, cex=1.8,box.lwd=2)
-   par(xpd=FALSE)
+   plot(spTransform(wash.shp,CRS(alb.crs)),add=TRUE,col='gray',border='black',cex=0.5)
+
+   village <- list(lon=-122.960634,lat=50.116440)
+   whistler <- list(lon=-122.956828,lat=50.060027)
+   blackcomb <- list(lon=-122.895274,lat=50.097341)
+   olympics <-  list(lon=-123.118321,lat=50.139575)
+   lines(village$lon+c(0,-0.05),village$lat+c(0,0.05),col='darkgray',lwd=3)
+   shadowtext(village$lon-0.1,village$lat+0.05,'Village',adj=4,pos=3,cex=1.55,col='black',bg='white',r=0.15)
+
+   lines(whistler$lon+c(0,-0.05),whistler$lat+c(0.0,-0.05),col='darkgray',lwd=3)
+   shadowtext(whistler$lon-0.05,whistler$lat-0.09,'Whistler',adj=4,pos=3,cex=1.55,col='black',bg='white',r=0.15)
+
+##   lines(blackcomb$lon+c(0,0.0),blackcomb$lat+c(0,0.05),col='gray',lwd=3)
+##   shadowtext(blackcomb$lon-0,blackcomb$lat+0.05,'Blackcomb',adj=4,pos=3,cex=1.55,col='black',bg='white',r=0.1)
+
+   ##lines(olympics$lon+c(0,0.0),olympics$lat+c(0,0.05),col='gray',lwd=3)
+   ##shadowtext(olympics$lon-0,olympics$lat+0.05,'Olympic\nPark',adj=4,pos=3,cex=1.55,col='black',bg='white',r=0.1)
+
+   rect(-123.375, 50.32, -123.325,50.38, col='white',border='white')   
+   text(-123.35,50.35,letter,cex=3)
+
+   if (add.legend) {
+      par(xpd=NA)
+      legend('topright', inset=c(-0.29,0),col = "black", legend=rev(map.class.breaks.labels), 
+              pch=22, pt.bg = rev(alpha(colour.ramp,0.8)),
+              pt.cex=3.55, y.intersp=0.8, title.adj=0.2, title=leg.title, xjust=0, cex=1.8,)
+      par(xpd=FALSE)
+   }
    box(which='plot',lwd=2)
 
-##   dev.off()
-##browser()
 }
 
 
 
 
 ##-------------------------------------------------------------------------
-
 get.region.shape <- function(region,shape.dir) {
   region.shp <- readOGR(shape.dir, region, stringsAsFactors=F, verbose=F)
   return(region.shp)
 }
-

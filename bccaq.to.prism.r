@@ -54,8 +54,7 @@ create_anoms <- function(var.name,nc,anc,var.dates,yst,yen) {
   n.lat <- length(lat)
   l.width <- 2
   l.seq <- seq(1,368,by=l.width) ##Specific to PNWNAmet
-
-  ##seq(1,192,by=8) ###For ERA5
+  ###l.seq <- seq(1,192,by=l.width) ###For ERA5
   lon <- ncvar_get(nc,'lon')
   n.lon <- length(lon)
   time <- ncvar_get(nc,'time')
@@ -65,6 +64,7 @@ create_anoms <- function(var.name,nc,anc,var.dates,yst,yen) {
 
   for (ltx in l.seq) {
     print(paste0('Subset: ',ltx,' in 368')) ###192'))
+    ###print(paste0('Subset: ',ltx,' in 192'))
     var.data <- ncvar_get(nc,var.name,start=c(1,ltx,1),count=c(-1,l.width,-1))
     if (var.name=='pr') {
        var.data[var.data<0] <- 0
@@ -108,18 +108,20 @@ bccaq_anomalies <- function(var.name,gcm,scenario,interval,base.dir,tmp.dir) {
   print(paste('BCCAQ Anomalies: ',gcm,', ',var.name,sep=''))
 
   gcm.dir <- paste(base.dir,gcm,'/',sep='')
+  print(gcm.dir)
   var.file <- list.files(path=gcm.dir,pattern=paste(var.name,'_BCCAQ2_',sep=''))
-  if (!grepl('TPS',var.file)) {
-     stop('Specific to PNWNAmet. Make sure the 368 loop matches the dimensions of the file')
-  }
   print(var.file)
+  if (!grepl('TPS',var.file)) {
+     ##stop('Specific to PNWNAmet. Make sure the 368 loop matches the dimensions of the file')
+  }
+
   file.copy(from=paste0(base.dir,gcm,'/',var.file),to=tmp.dir,overwrite=TRUE)
   Sys.sleep(5)
-  var.tmp.file <- paste0(tmp.dir,'/',var.file)
+  var.tmp.file <- paste0(tmp.dir,var.file)
 
   ##For mean subset 1981-2010
   anoms.file <- gsub(pattern='_BCCAQ2_',replacement='_anoms_BCCAQ2_',var.file)
-  anoms.tmp.file <- paste0(tmp.dir,'/',anoms.file)
+  anoms.tmp.file <- paste0(tmp.dir,anoms.file)
   print('Anoms file')
   print(anoms.file)
   file.copy(from=var.tmp.file,to=anoms.tmp.file,overwrite=T)
@@ -157,7 +159,8 @@ daily_prism_scale <- function(var.name,gcm,tmp.dir,interp.file,prism.dir) {
                       pr='pr',
                       tasmax='tmax',
                       tasmin='tmin')
-  prism.file <- paste(prism.dir,prism.var,'_monClim_PRISM_MODIS_GRID_198101-201012.nc',sep='')
+  ###prism.file <- paste(prism.dir,prism.var,'_monClim_PRISM_MODIS_GRID_198101-201012.nc',sep='')
+  prism.file <- paste(prism.dir,prism.var,'_monClim_PRISM_VAN_WHISTLER_198101-201012.nc',sep='')
 
   adjusted.file <- gsub(pattern='_anoms_interp_',replacement='_gcm_prism_',interp.file)
   file.copy(from=paste0(tmp.dir,interp.file),to=paste0(tmp.dir,adjusted.file),overwrite=T)  
@@ -239,7 +242,7 @@ for(i in 1:length(args)){
 ###gcm <- 'ACCESS1-0'
 ###var.name <- 'tasmax'
 interval <- '1981-2010' ##Baseline for the anomalies
-tmp.dir <- tmpdir
+tmp.dir <- paste0(tmpdir,'/')
 var.name <- varname
 ###tmp.dir <- '/local_temp/ssobie/prism/'
 
@@ -248,21 +251,21 @@ if (!file.exists(tmp.dir))
 
 base.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/'
 prism.dir <- '/storage/data/projects/rci/data/winter_sports/PRISM/'
-grid.file <- '/storage/home/ssobie/grid_files/van.whistler.modis.grid.txt'
+grid.file <- '/storage/home/ssobie/grid_files/van.whistler.prism.grid.txt'
 
 anoms.file <- bccaq_anomalies(var.name,gcm,scenario,interval,base.dir,tmp.dir)
 ##print('Copy anomalies back')
-##file.copy(from=paste0(tmp.dir,'/',anoms.file),to=paste0(base.dir,gcm,'/'),overwrite=T)
+##file.copy(from=paste0(tmp.dir,anoms.file),to=paste0(base.dir,gcm,'/'),overwrite=T)
 ##Sys.sleep(5)
 
-##interp.file <- interp_bccaq(var.name,gcm,'1950-2100',tmp.dir,anoms.file,grid.file)
-interp.file <- interp_bccaq(var.name,gcm,'1945-2012',tmp.dir,anoms.file,grid.file)
+interp.file <- interp_bccaq(var.name,gcm,'1950-2100',tmp.dir,anoms.file,grid.file)
+##interp.file <- interp_bccaq(var.name,gcm,'1945-2012',tmp.dir,anoms.file,grid.file)
+##interp.file <- interp_bccaq(var.name,gcm,'1980-2018',tmp.dir,anoms.file,grid.file)
 ##file.copy(from=paste0(tmp.dir,interp.file),to=paste0(base.dir,gcm,'/'),overwrite=TRUE)
 ##Sys.sleep(5)
 
 adjusted.file <- daily_prism_scale(var.name,gcm,tmp.dir,interp.file,prism.dir)
 file.copy(from=paste0(tmp.dir,adjusted.file),to=paste0(base.dir,gcm,'/'),overwrite=TRUE)
-
 
 file.remove(from=paste0(tmp.dir,anoms.file))
 file.remove(from=paste0(tmp.dir,interp.file))

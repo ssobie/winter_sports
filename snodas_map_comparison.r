@@ -1,54 +1,72 @@
 ##Script to plot the fraction of useable MODIS data
 source('/storage/data/projects/rci/assessments/code/resource.region.map.support.r',chdir=T)
-source('/storage/data/projects/rci/bcgov/moti/nrcan-precip_case_studies/code/moti.climdex.robjects.r',chdir=TRUE)
-source('/storage/home/ssobie/code/hg/pievc/spatial.r',chdir=T)
 source('/storage/data/projects/rci/stat.downscaling/bccaq2/code/new.netcdf.calendar.R',chdir=T)
-source('/storage/home/ssobie/code/repos/winter_sports/van_whistler_map.r')        
+source('/storage/home/ssobie/code/repos/winter_sports/ncc_map_support.r',chdir=T)
+ 
 
-get.region.shape <- function(region,shape.dir) {
-  region.shp <- readOGR(shape.dir, region, stringsAsFactors=F, verbose=F)
-  return(region.shp)
+model <- 'ERA5'
+reanalysis <- 'PNWNAmet'
+
+if (1==1) {
+
+  ##SNOW MODEL
+  snow.dir <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/snow_model/calibrated_',model,'_',reanalysis,'_prism_tps/')
+  ##snw.file <- paste0(snow.dir,'swe_BCCAQ2-PRISM_',model,'_',reanalysis,'_1945-2012.nc')
+  snw.file <- paste0(snow.dir,'swe_BCCAQ2-PRISM_',model,'_',reanalysis,'_1980-2018.nc')
+  snw.nc <- nc_open(snw.file)
+  lon <- ncvar_get(snw.nc,'lon')
+  lat <- ncvar_get(snw.nc,'lat')
+  snow.time <- netcdf.calendar(snw.nc)
+
+  ##SNODAS 
+  snodas.dir <- paste0('/storage/data/projects/rci/data/winter_sports/obs/SNODAS/ncdf4_files/')
+  snd.file <- paste0(snodas.dir,'swe_snodas_prism_grid_van_whistler_20100101-20181231.nc')
+  snd.nc <- nc_open(snd.file)
+  snodas.time <- netcdf.calendar(snd.nc)
+
+  model.match <- format(snow.time,'%Y-%m-%d') %in% format(snodas.time,'%Y-%m-%d')
+  snodas.match <- format(snodas.time,'%Y-%m-%d') %in% format(snow.time,'%Y-%m-%d')
+
+  model.data <- array(NA,c(snw.nc$dim$lon$len,ncol=snw.nc$dim$lat$len,sum(model.match)))
+ 
+  for (i in 1:snw.nc$dim$lon$len) {
+     print(paste0(i,' of ',snw.nc$dim$lon$len))
+     model.data[i,,] <- ncvar_get(snw.nc,'swe',start=c(i,1,1),count=c(1,-1,-1))[,model.match]*1000
+  }
+  
+  snodas.raw <- ncvar_get(snd.nc,'swe')
+  snodas.data <- snodas.raw[,,snodas.match]
+  rm(snodas.raw)
+
+  common.time <- snodas.time[snodas.match]
+
+  data.diff <- apply(model.data - snodas.data,c(1,2),mean,na.rm=T)
+  data.diff[data.diff > 1500] <- 1500
+  data.diff[data.diff < -1500] <- -1500
+  diff.raster <-  list(x=lon,y=lat,z=data.diff)
+  save.dir <- '/storage/data/projects/rci/data/winter_sports/plots/data_files/'
+  save(diff.raster,file=paste0(save.dir,model,'snodas.',model,'.',reanalysis,'.map.comparison.RData'))
 }
 
-shape.dir <- paste0('/storage/data/projects/rci/data/assessments/metro_van/shapefiles/')
-region <- 'metro_van'
-region.shp <- spTransform(get.region.shape(region,shape.dir),CRS("+init=epsg:4326")) 
-
-glacier.dir <- '/storage/data/gis/basedata/randolph_glacier_inventory/v32/02_rgi32_WesternCanadaUS'
-glacier.name <- '02_rgi32_WesternCanadaUS'
-glacier.shp <- spTransform(get.region.shape(glacier.name,glacier.dir),CRS("+init=epsg:4326"))
-
-model <- 'ERA'
-
-##SNOW MODEL
-snow.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/')
-snw.file <- paste0(snow.dir,'swe_BCCAQ2-PRISM_',model,'_19790101-20181031.nc')
-snw.nc <- nc_open(snw.file)
-lon <- ncvar_get(snw.nc,'lon')
-lat <- ncvar_get(snw.nc,'lat')
-snow.time <- netcdf.calendar(snw.nc)
-nc.grid <- get.netcdf.grid(snw.nc)
-coordinates(nc.grid) <- c("lon", "lat")
-model.coords <- nc.grid@coords
-
-##SNODAS 
-snodas.dir <- paste0('/storage/data/projects/rci/data/winter_sports/obs/SNODAS/ncdf4_files/')
-snd.file <- paste0(snodas.dir,'swe_snodas_modis_grid_van_whistler_20100101-20181231.nc')
-snd.nc <- nc_open(snd.file)
-snodas.time <- netcdf.calendar(snd.nc)
-
-model.match <- format(snow.time,'%Y-%m-%d') %in% format(snodas.time,'%Y-%m-%d')
-snodas.match <- format(snodas.time,'%Y-%m-%d') %in% format(snow.time,'%Y-%m-%d')
+##load(file=paste0(save.dir,model,'snodas.model.map.comparison.RData'))
 
 
-model.data <- ncvar_get(snw.nc,'swe')[,,model.match]*1000
-snodas.data <- ncvar_get(snd.nc,'swe')[,,snodas.match]
+class.breaks <- c(-1500,-1000,-750,-500,-250,-100,-50,0,50,100,250,500,750,1000,1500)
+map.range <- range(data.diff,na.rm=T)
+ ####get.class.breaks('swe',type='past',map.range,manual.breaks='')
 
-common.time <- snodas.time[snodas.match]
+plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/',model,'.prism.tps.swe.snodas.diff.2020.png') 
+plot.title <- paste0(model,' Snow Model-VIC SWE Comparison')
 
-data.diff <- apply(model.data - snodas.data,c(1,2),mean,na.rm=T)
+png(file=plot.file,width=10,height=6,units='in',res=600,pointsize=6,bg='white')
+make_van_whistler_plot(var.name='swe',plot.type='diff',plot.title,diff.raster,plot.file,
+                       class.breaks=class.breaks,mark=c(0,6,5,0),leg.title='mm')
+dev.off()
 
-diff.raster <-  list(x=lon,y=lat,z=data.diff)
+browser()
+
+
+
 
 ##Need 
 ##ratio.raster for the success rate
@@ -70,8 +88,10 @@ nc_close(snw.nc)
 ##---------------------------------------------------------------------------------
 ##Comparison Plot
 if (1==1)  {
-plot.file <- paste('/storage/data/projects/rci/data/winter_sports/plots/',model,'.swe.snodas.diff.png')
+plot.file <- paste('/storage/data/projects/rci/data/winter_sports/plots/',model,'.swe.snodas.diff.2020_manual2.png') 
 plot.title <- paste0(model,' Snow Model-SNODAS SWE Comparison')
+
+png(file=plot.file,width=9,height=6,units='in',res=600,pointsize=6,bg='white')
 map.range <- range(data.diff,na.rm=T)
 leg.title <- 'mm'
 class.breaks <- c(-10000,-1000,-500,-250,-100,-50,0,50,100,250,500,1000,100000)   ####get.class.breaks('swe',type='past',map.range,manual.breaks='')
@@ -84,6 +104,7 @@ vw.plot(diff.raster,
         class.breaks,map.class.breaks.labels,colour.ramp,
         plot.file,plot.title,leg.title,
         glaciers=TRUE,bias=TRUE)
+dev.off()
 }
 
 browser()
@@ -166,8 +187,8 @@ vw.plot(modis.snow.raster,
 
 ##---------------------------------------------------------------------------------
 ##Four panel figure
-if (1==1) {
-plot.file <- '/storage/data/projects/rci/data/winter_sports/plots/modis.metro.van.comparison.data.2018.png'
+if (1==0) {
+plot.file <- '/storage/data/projects/rci/data/winter_sports/plots/modis.metro.van.comparison.data.2020.png'
 png(plot.file,width=1800,height=1800)
 par(mfrow=c(3,2))
 

@@ -118,7 +118,8 @@ create.base.files <- function(var.name,gcm,run,
   var.geog <- ncvar_def(var.name, units='m', dim=list(x.geog, y.geog, t.geog),
                         missval=atts[['missing_value']])
 
-  file.nc <- nc_create(paste(write.dir,write.clim.name,sep=''), var.geog,h_minfree=102400)
+  ##This use of minfree requires module load R/3.4.3 to use the right R version
+  file.nc <- nc_create(paste(write.dir,write.clim.name,sep=''), var.geog,h_minfree=102400)  
 
   ##Time Attributes
   ncatt_put(file.nc,'time','standard_name','Time')
@@ -155,26 +156,36 @@ create.base.files <- function(var.name,gcm,run,
 ##**************************************************************************************
 ##-----------------------------------------------------------------------------
 ##Climdex from the 800 BCCAQ-PRISM output
-make_snow_netcdf_files <- function(gcm,run) {
+make_snow_netcdf_files <- function() { ##gcm,run) {
   
   interval <- '19500101-21001231'
+  ##interval <- '1945-2012'
+  ##interval <- '1980-2018'
 
   write.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/snow_model/'  
-   
-  ##gcm.list <- c('ACCESS1-0','CanESM2','CCSM4','CNRM-CM5','CSIRO-Mk3-6-0','GFDL-ESM2G',
-  ##              'HadGEM2-CC','HadGEM2-ES','inmcm4','MIROC5','MPI-ESM-LR','MRI-CGCM3')
+  ##write.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/',gcm,'/')
 
-  ##for (model in gcm.list) {
-  ##  gcm <- model
+  gcm.list <- c('ACCESS1-0','CanESM2','CCSM4','CNRM-CM5','CSIRO-Mk3-6-0','GFDL-ESM2G',
+                'HadGEM2-CC','HadGEM2-ES','inmcm4','MIROC5','MPI-ESM-LR','MRI-CGCM3')
+  run.list <- c('r1i1p1','r1i1p1','r2i1p1','r1i1p1','r1i1p1','r1i1p1',
+                'r1i1p1','r1i1p1','r1i1p1','r3i1p1','r3i1p1','r1i1p1')
+
+  gcm.list <- 'HadGEM2-CC'
+  run.list <- 'r1i1p1'
+
+  for (m in seq_along(gcm.list)) {
+    gcm <- gcm.list[m]
     print(gcm)
+    run <- run.list[m]
     data.dir <-  paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/',gcm,'/')  
+
     first <- create.base.files(var.name='snowdepth',gcm,run,
                                interval,
                                data.dir,write.dir)
     first <- create.base.files(var.name='swe',gcm,run,
                                interval,
                                data.dir,write.dir)
-  ##}  
+  }  
 }
 
 ##**************************************************************************************

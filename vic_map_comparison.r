@@ -1,35 +1,21 @@
 ##Script to plot the fraction of useable MODIS data
 source('/storage/data/projects/rci/assessments/code/resource.region.map.support.r',chdir=T)
-source('/storage/data/projects/rci/bcgov/moti/nrcan-precip_case_studies/code/moti.climdex.robjects.r',chdir=TRUE)
-source('/storage/home/ssobie/code/hg/pievc/spatial.r',chdir=T)
+source('/storage/home/ssobie/code/repos/winter_sports/ncc_map_support.r',chdir=T)
 source('/storage/data/projects/rci/stat.downscaling/bccaq2/code/new.netcdf.calendar.R',chdir=T)
-source('/storage/home/ssobie/code/repos/winter_sports/van_whistler_map.r')        
 
-get.region.shape <- function(region,shape.dir) {
-  region.shp <- readOGR(shape.dir, region, stringsAsFactors=F, verbose=F)
-  return(region.shp)
-}
+library(raster)
 
-shape.dir <- paste0('/storage/data/projects/rci/data/assessments/metro_van/shapefiles/')
-region <- 'metro_van'
-region.shp <- spTransform(get.region.shape(region,shape.dir),CRS("+init=epsg:4326")) 
-
-glacier.dir <- '/storage/data/gis/basedata/randolph_glacier_inventory/v32/02_rgi32_WesternCanadaUS'
-glacier.name <- '02_rgi32_WesternCanadaUS'
-glacier.shp <- spTransform(get.region.shape(glacier.name,glacier.dir),CRS("+init=epsg:4326"))
-
-model <- 'ERA'
+model <- 'PNWNAmet'
+reanalysis <- 'PNWNAmet'
+type <- 'prism_tps'
 
 ##SNOW MODEL
-snow.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/')
-snw.file <- paste0(snow.dir,'era_con_swe.nc')
+snow.dir <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/snow_model/calibrated_',model,'_',reanalysis,'_',type,'/')
+snw.file <- paste0(snow.dir,'swe_',tolower(model),'_con_swe.nc')
 snw.nc <- nc_open(snw.file)
 lon <- ncvar_get(snw.nc,'lon')
 lat <- ncvar_get(snw.nc,'lat')
 snow.time <- netcdf.calendar(snw.nc)
-nc.grid <- get.netcdf.grid(snw.nc)
-coordinates(nc.grid) <- c("lon", "lat")
-model.coords <- nc.grid@coords
 
 ##VIC 
 vic.dir <- paste0('/storage/data/projects/rci/data/winter_sports/')
@@ -40,7 +26,6 @@ vic.time <- netcdf.calendar(vic.nc)
 model.match <- format(snow.time,'%Y-%m-%d') %in% format(vic.time,'%Y-%m-%d')
 vic.match <- format(vic.time,'%Y-%m-%d') %in% format(snow.time,'%Y-%m-%d')
 
-
 model.data <- ncvar_get(snw.nc,'swe')[,,model.match]*1000
 vic.data <- ncvar_get(vic.nc,'swe')[,,vic.match]*1000
 
@@ -48,6 +33,9 @@ common.time <- vic.time[vic.match]
 april1.ix <- grep('*-04-01',common.time)
 
 data.diff <- apply(model.data - vic.data,c(1,2),mean,na.rm=T)
+data.diff[data.diff > 500] <- 500
+data.diff[data.diff < -500] <- -500
+
 april.diff <- apply(model.data[,,april1.ix] - vic.data[,,april1.ix],c(1,2),mean,na.rm=T)
 
 nc_close(vic.nc)
@@ -81,7 +69,6 @@ sd.raster <-  list(x=lon,y=lat,z=sd.mat)
 ##modis.snow.raster for the total snow days
 
 save.dir <- '/storage/data/projects/rci/data/winter_sports/plots/data_files/'
-
 ##save(ratio.raster,file=paste0(save.dir,model,'.success.rate.2018.RData'))
 ##save(valid.raster,file=paste0(save.dir,'modis.observable.days.2018.RData'))
 ##save(modis.snow.raster,file=paste0(save.dir,'modis.snow.days.2018.RData'))
@@ -93,26 +80,45 @@ save.dir <- '/storage/data/projects/rci/data/winter_sports/plots/data_files/'
 ##---------------------------------------------------------------------------------
 ##Average SWE Comparison Plot
 if (1==1)  {
-plot.file <- paste('/storage/data/projects/rci/data/winter_sports/plots/',model,'.swe.vic.diff.png')
+
+class.breaks <- c(-500,-300,-200,-100,-50,0,50,100,200,300,500)  
+ ####get.class.breaks('swe',type='past',map.range,manual.breaks='')
+plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/',model,'.',type,'.swe.vic.diff.2020.png')
 plot.title <- paste0(model,' Snow Model-VIC SWE Comparison')
+
+png(file=plot.file,width=10,height=6,units='in',res=600,pointsize=6,bg='white')
+make_van_whistler_plot(var.name='swe',plot.type='diff',plot.title,diff.raster,plot.file,
+                       class.breaks=class.breaks,mark=c(0,6,5,0),leg.title='mm')
+dev.off()
+
+browser()
+
+
 
 ##png(plot.file,width=1400,height=2700)
 ##par(mfrow=c(3,1))
 
 map.range <- range(data.diff,na.rm=T)
 leg.title <- 'mm'
-class.breaks <- c(-100000,-500,-300,-200,-100,-50,0,50,100,200,300,500,100000)   ####get.class.breaks('swe',type='past',map.range,manual.breaks='')
+
 map.class.breaks.labels <- get.class.break.labels(class.breaks,lesser.sign=TRUE,greater.sign=TRUE)
 colour.ramp <- get.legend.colourbar(var.name='swe',map.range=map.range,
                                     my.bp=0,class.breaks=class.breaks,
                                     type)
 plot.title <- paste0(model,' Snow Model-VIC Average SWE Comparison')
+png(file=plot.file,width=9,height=6,units='in',res=600,pointsize=6,bg='white')
 vw.plot(diff.raster,
         class.breaks,map.class.breaks.labels,colour.ramp,
         plot.file,plot.title,leg.title,
         glaciers=TRUE,bias=TRUE)
+dev.off()
+
+
 
 browser()
+
+
+
 
 ##SWE Corr
 map.range <- range(cor.mat,na.rm=T)

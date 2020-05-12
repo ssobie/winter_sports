@@ -100,6 +100,13 @@ make_whistler_plot <- function(var.name,plot.type,var.title,plot.data,plot.file,
 
    image(plot.data,add=T,col=alpha(white.colour.ramp,0.8),breaks=white.class.breaks)
 
+   ##Add contours
+
+#   lon <- sort(unique(coordinates(plot.data)[,1]))
+#   lat <- sort(unique(coordinates(plot.data)[,2]))
+#   snow.matrix <- t(as.matrix(plot.data))
+#   contour(x=lon,y=lat,z=snow.matrix,levels=c(100,200,500,1000,2000,3000),add=T)
+
    ##plot(spTransform(borders.shp,CRS(alb.crs)),add=TRUE,border='black',cex=0.5)
    if (var.name=='swe'|var.name=='snowdepth') {
       plot(spTransform(glacier.shp,CRS(alb.crs)),add=TRUE,col=alpha('white',0.85),border=alpha('white',0.85),cex=0.5)
@@ -109,7 +116,7 @@ make_whistler_plot <- function(var.name,plot.type,var.title,plot.data,plot.file,
    plot(rivers.shp,add=TRUE,col='lightgray',border='lightgray',xlim=plot.window.xlim,ylim=plot.window.ylim)
  
    plot(spTransform(wco.shp,CRS(alb.crs)),add=TRUE,col='lightgray',border='darkgray',lwd=0.5)
-   plot(spTransform(region.shp,CRS(alb.crs)),add=TRUE,border='black',cex=0.55)
+##   plot(spTransform(region.shp,CRS(alb.crs)),add=TRUE,border='black',cex=0.55)
    plot(spTransform(wash.shp,CRS(alb.crs)),add=TRUE,col='gray',border='black',cex=0.5)
 ##   abline(v=lons,lty=3,col='gray',lwd=0.7)
 ##   abline(h=lats,lty=3,col='gray',lwd=0.7)
@@ -134,7 +141,7 @@ make_whistler_plot <- function(var.name,plot.type,var.title,plot.data,plot.file,
 
    ##par(xpd=NA)
    legend('topright', col = "black", legend=rev(map.class.breaks.labels), pch=22, pt.bg = rev(alpha(colour.ramp,0.8)),
-         pt.cex=1.55, y.intersp=0.8, title.adj=0.2, title=leg.title, xjust=0, cex=1.8,)
+         pt.cex=3.55, y.intersp=0.8, title.adj=0.2, title=leg.title, xjust=0, cex=1.8,)
 
    box(which='plot',lwd=2)
 

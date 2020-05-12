@@ -1,19 +1,11 @@
 ##SCript to compute the start and end dates and lengths of the snow season for each year
 
+source('/storage/home/ssobie/code/repos/winter_sports/site.coordinates.r',chdir=T)
+
 library(ncdf4)
 library(plotrix)
 
-get.coordinates <- function(site) {
-
-  coordinates <- list(spuzzum_creek=c(-121.686,49.674,1197),
-                      chilliwack_river=c(-121.71667,49.0333,1600),
-                      upper_squamish=c(-123.4333,50.1500,1340),
-                      tenquille_lake=c(-122.9333,50.5333,1680))
-  rv <- coordinates[[site]]
-  return(rv)
-}
-
-get.snow.season.dates <- function(input.snow,dates) {
+get_snow_season_dates <- function(input.snow,dates) {
 
   years <- format(as.Date(dates),'%Y')
   jdays <- format(as.Date(dates),'%j')
@@ -36,8 +28,8 @@ get.snow.season.dates <- function(input.snow,dates) {
   if (ix[1] > 100) {
      ix <- sort(unique(c(1,pt.diff,top.ix)))
   }   
-##  plot(as.Date(dates),input.snow)
-##  abline(v=as.Date(dates[ix]),col='red')
+  ##plot(as.Date(dates),input.snow,xlim=c(as.Date('1967-01-01'),as.Date('1980-01-01')))
+  ##abline(v=as.Date(dates[ix]),col='red')
   len <- length(ix)
 
   lengths <- ix[seq(2,len,2)] - ix[seq(1,len-1,2)]
@@ -54,26 +46,48 @@ get.snow.season.dates <- function(input.snow,dates) {
 }
 
 ##Slope and Aspect Values
-model <- 'NCEP2'
+
+model <- 'ERA5'
 type <- 'SWE'
 
+sites <- c('spuzzum_creek','upper_squamish','chilliwack_river','tenquille_lake','wahleach_lake','blackwall_peak_pillow')
+site.names <- c('Spuzzum Creek','Upper Squamish','Chilliwack River','Tenquille Lake','Wahleach Lake','Blackwall Peak')
 
-sites <- c('spuzzum_creek','upper_squamish','chilliwack_river','tenquille_lake')
-site.names <- c('Spuzzum Creek','Upper Squamish','Chilliwack River','Tenquille Lake')
-slen <- 1001
+snow.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow_series/spuzzum_creek_',model,'_PRISM_TPS_snow_model_data.csv')
+snow.data <- read.csv(snow.file,header=T,as.is=T)
+snow.dates <- snow.data$Dates
+snow.years <- unique(format(as.Date(snow.dates),'%Y'))
+ylen <-  length(snow.years)
+
+slen <- length(sites)
+sim.lengths <- matrix(0,nrow=slen,ncol=ylen)
+sim.starts <- matrix(0,nrow=slen,ncol=ylen)
+sim.peaks <- matrix(0,nrow=slen,ncol=ylen)
+sim.ends <- matrix(0,nrow=slen,ncol=ylen)
 
 results.matrix <- matrix(0,nrow=20,ncol=length(sites))
 
-##Loop over sites
 
+##Loop over sites
 for (i in seq_along(sites)) {
 
     site <- sites[i]
     print(site)
-    clim.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_',model,'_800m_data.csv')
+    snow.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow_series/',site,'_',model,'_PRISM_TPS_snow_model_data.csv')
+    snow.data <- read.csv(snow.file,header=T,as.is=T)
+    snow.dates <- snow.data$Dates
+    snow.swe <- snow.data$SWE*1000
+    snow.seasons <- get_snow_season_dates(snow.swe,snow.dates)
 
-    clim.data <- read.csv(clim.file,header=T,as.is=T)
-    sim.dates <- clim.data$Dates
+    sim.lengths <- snow.seasons$lengths
+    sim.starts <- snow.seasons$starts
+    sim.peaks <- snow.seasons$peaks
+    sim.ends <- snow.seasons$ends
+
+    sim.lengths[sim.lengths==0] <- NA
+    sim.starts[sim.starts==0] <- NA
+    sim.peaks[sim.peaks==0] <- NA
+    sim.ends[sim.ends==0] <- NA
 
     dates.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/snow_seasons/',site,'_season_dates.csv') 
     season.dates <- read.csv(dates.file,header=T,as.is=T)
@@ -82,41 +96,17 @@ for (i in seq_along(sites)) {
     pillow.ends <- as.numeric(format(as.Date(season.dates$End),'%j'))
     pillow.lengths <- as.numeric(season.dates$Length)
 
-    pack.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/',site,'.',tolower(model),'.snow.1001.csv')
-    pack.sims <- read.csv(pack.file,header=T,as.is=T)
-    swe.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/',site,'.',tolower(model),'.swe.1001.csv')
-    swe.sims <- read.csv(swe.file,header=T,as.is=T)
-
-    sim.years <- unique(format(as.Date(sim.dates),'%Y'))
-    ylen <-  length(sim.years)
-    test.dates <- get.snow.season.dates(swe.sims[,1],sim.dates)
-    sim.lengths <- matrix(0,nrow=slen,ncol=ylen)
-    sim.starts <- matrix(0,nrow=slen,ncol=ylen)
-    sim.peaks <- matrix(0,nrow=slen,ncol=ylen)
-    sim.ends <- matrix(0,nrow=slen,ncol=ylen)
+    snow.match <- as.numeric(snow.years) %in% as.numeric((format(as.Date(season.dates$Start),'%Y')))
+    pillow.match <- as.numeric((format(as.Date(season.dates$Start),'%Y'))) %in% as.numeric(snow.years) 
     
-    for (s in 1:slen) {
-      swe.se.dates <- get.snow.season.dates(swe.sims[,s],sim.dates)
-      sim.lengths[s,1:length(swe.se.dates$lengths)] <- swe.se.dates$lengths
-      sim.starts[s,1:length(swe.se.dates$starts)] <- swe.se.dates$starts
-      sim.peaks[s,1:length(swe.se.dates$peaks)] <- swe.se.dates$peaks
-      sim.ends[s,1:length(swe.se.dates$ends)] <- swe.se.dates$ends
-    }
-    sim.lengths[sim.lengths==0] <- NA
-    sim.starts[sim.starts==0] <- NA
-    sim.peaks[sim.peaks==0] <- NA
-    sim.ends[sim.ends==0] <- NA
+    lengths.diff <- season.dates$Length[pillow.match] - sim.lengths[snow.match]
+    starts.diff <-  pillow.starts[pillow.match] - sim.starts[snow.match]
+    peaks.diff <-  pillow.peaks[pillow.match] - sim.peaks[snow.match]
+    ends.diff <-  pillow.ends[pillow.match] - sim.ends[snow.match]
 
-    year.match <- as.numeric(sim.years) %in% as.numeric((format(as.Date(season.dates$Start),'%Y')))
-    
-    lengths.diff <- season.dates$Length - sim.lengths[,year.match]
-    starts.diff <-  pillow.starts - sim.starts[,year.match]
-    peaks.diff <-  pillow.peaks - sim.peaks[,year.match]
-    ends.diff <-  pillow.ends - sim.ends[,year.match]
-
-    rv <- c(mean(pillow.starts),mean(pillow.peaks),mean(pillow.ends),mean(pillow.lengths),
-            mean(sim.starts[,year.match]),mean(sim.peaks[,year.match]),mean(sim.ends[,year.match]),mean(sim.lengths[,year.match]),
-            sd(sim.starts[,year.match]),sd(sim.peaks[,year.match]),sd(sim.ends[,year.match]),sd(sim.lengths[,year.match]),
+    rv <- c(mean(pillow.starts[pillow.match]),mean(pillow.peaks[pillow.match]),mean(pillow.ends[pillow.match]),mean(pillow.lengths[pillow.match]),
+            mean(sim.starts[snow.match]),mean(sim.peaks[snow.match]),mean(sim.ends[snow.match]),mean(sim.lengths[snow.match]),
+            sd(sim.starts[snow.match]),sd(sim.peaks[snow.match]),sd(sim.ends[snow.match]),sd(sim.lengths[snow.match]),
             mean(starts.diff),mean(peaks.diff),mean(ends.diff),mean(lengths.diff),
             sd(starts.diff),sd(peaks.diff),sd(ends.diff),sd(lengths.diff))
     results.matrix[,i] <- round(rv,1)
@@ -129,5 +119,6 @@ for (i in seq_along(sites)) {
                               'Start Diff','Peak Diff','End Diff','Length Diff',      
                               'SDiff SD'  ,'PDiff SD','EDiff SD','LDiff SD'),rbind(site.names,results.matrix))
 
-
+##write.table(results.matrix,file='/storage/data/projects/rci/data/winter_sports/asp.snow.seas.pnw.data.csv',
+##            sep=',',quote=FALSE,row.name=F,col.name=F)
 

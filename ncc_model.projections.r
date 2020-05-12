@@ -131,8 +131,8 @@ gcm.list <- c('ACCESS1-0','CanESM2','CCSM4','CNRM-CM5','CSIRO-Mk3-6-0','GFDL-ESM
               'HadGEM2-CC','HadGEM2-ES','inmcm4','MIROC5','MPI-ESM-LR','MRI-CGCM3')
 time <- 'annual'
 ix <- 1
-past.ens <- extract_climatology_data(var.name='snowdepth',interval='1971-2000',
-                                       clim=paste0(time,'_total'),
+past.ens <- extract_climatology_data(var.name='swe',interval='1971-2000',
+                                       clim=paste0(time,'_maximum'),
                                        read.dir=gcm.dir,tmp.dir=tmp.dir,
                                        gcm.list=gcm.list,ix=ix)
 past.ens.avg <- calc(past.ens,mean)
@@ -238,7 +238,7 @@ vw.plot(modis.snow.raster,
 
 ##---------------------------------------------------------------------------------
 ##Four panel figure
-if (1==1) {
+if (1==0) {
 plot.file <- '/storage/data/projects/rci/data/winter_sports/plots/modis.metro.van.comparison.data.2018.png'
 png(plot.file,width=1800,height=1800)
 par(mfrow=c(3,2))

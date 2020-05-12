@@ -26,8 +26,8 @@ hyper.snow.phase <- function(tas,precip_m) {
 
 ##-------------------------------------------------------------
 
-snow.melt <- function(precip_mm, Tmax_C, Tmin_C, Date, lat_deg,slope=0, aspect=0, tempHt=1, windHt=2, groundAlbedo=0.25,
- 		SurfEmissiv=0.95, windSp=1, forest=0, startingSnowDepth_m=0, startingSnowDensity_kg_m3=450){
+snow_melt_functional <- function(precip_mm, Tmax_C, Tmin_C, Date, lat_deg,slope=0, aspect=0, tempHt=1, windHt=2, groundAlbedo=0.25,
+ 		                 SurfEmissiv=0.95, windSp=1, forest=0, startingSnowDepth_m=0, startingSnowDensity_kg_m3=450){
 
   ptm <- proc.time()
 

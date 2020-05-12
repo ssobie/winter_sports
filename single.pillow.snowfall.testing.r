@@ -4,21 +4,40 @@ library(ncdf4)
 library(plotrix)
 source('/storage/data/projects/rci/stat.downscaling/bccaq2/code/new.netcdf.calendar.R',chdir=T)
 source('/storage/home/ssobie/code/repos/winter_sports/snow.model.functional.r',chdir=T)
+source('/storage/home/ssobie/code/repos/winter_sports/site.coordinates.r',chdir=T)
+
+    ##coeffs <- list(a=-51.8,b=0.875,c=4.1,d=1.0209) ##Blackwall Pea
+    ##coeffs <- list(a=-49.45,b=0.5,c=2.25,d=1.0209) ##Tenquille Lake
+    ##coeffs <- list(a=-51.8,b=0.875,c=4.1,d=1.0209) ##Spuzzum Cree
+    ##coeffs <- list(a=-51.8,b=0.9,c=4.0,d=1.0209) ##Chilliwack River
+    ##coeffs <- list(a=-51.7,b=0.575,c=3.7,d=1.0209) ##Upper Squamish
+
+    coeffs <- list(a=-51.45,b=1.025,c=3.975,d=1.0209) ##Upper Squamish
+    coeffs <- list(a=-51.9,b=0.95,c=4.5,d=1.0209) ##Chilliwack River
+    coeffs <- list(a=-51.7,b=0.625,c=4.5,d=1.0209) ##Spuzzum Creek
+    coeffs <- list(a=-48.65,b=0.75,c=1.575,d=1.0209) ##Tenquille Lake
+    coeffs <- list(a=-48.0,b=0.25,c=2.675,d=1.0209) ##Blackwall Peak
+    coeffs <- list(a=-51.85,b=0.8,c=4.25,d=1.0209) ##Wahleach Lake
+
+
+
 
 
 hyper_snow <- function(pr,tasmax,tasmin) {
            
     ##coeffs <- list(a=-48.49,b=0.7628,c=3.0,d=1.0209) ##Best manual guess
 
-    coeffs <- list(a=-51.7,b=0.575,c=3.7,d=1.0209) ##Upper Squamish
-    coeffs <- list(a=-43.45,b=0.5,c=2.25,d=1.0209) ##Tenquille Lake
-    coeffs <- list(a=-51.8,b=0.9,c=4.0,d=1.0209) ##Chilliwack River
-    coeffs <- list(a=-51.8,b=0.875,c=4.1,d=1.0209) ##Spuzzum Creek
+
 
     tas <- (tasmax+tasmin)/2                # degrees C
     frac <- coeffs$a*(tanh(coeffs$b*(tas-coeffs$c))-coeffs$d)
     sample <- runif(length(tas),min=0,max=100)
     test <- sample > frac
+    high.temp <- tas > 15
+    test[high.temp] <- TRUE
+    low.temp <- tas < -10
+    test[low.temp] <- FALSE
+
     snow.type <- rep(TRUE,length(tas))
     snow.type[test] <- FALSE
 
@@ -79,41 +98,11 @@ get_snow_season_dates <- function(input.snow,dates) {
   return(rv)
 }
 
-
-
-
-get.coordinates <- function(site) {
-
-  coordinates <- list(callaghan=c(-123.1036,50.1383278,1009),
-                      orchid_lake=c(-123.0519638,49.53678,1178),
-                      palisade_lake=c(-123.0321944,49.454433,898),
-                      grouse_mountain=c(-123.0774472,49.383655,1126),
-                      dog_mountain=c(-122.96255,49.37251944,1007),
-                      dickson_lake=c(-122.06984166,49.3168194,1147),
-                      stave_lake=c(-122.315805,49.58030277,1211),
-                      nahatlatch=c(-122.059261,49.825866,1530),
-                      wahleach=c(-121.57945,49.2298694,1395),
-                      klesilkwa=c(-121.3086527,49.129438,610),
-                      lightning_lake=c(-120.850205,49.044788,1254),
-                      brookmere=c(-120.87397,49.815027,994),
-                      shovelnose_mountain=c(-120.864175,49.8546305,1456),
-                      hamilton_hill=c(-120.7955805,49.4988027,1477),
-                      spuzzum_creek=c(-121.686,49.674,1197),
-                      chilliwack_river=c(-121.71667,49.0333,1600),
-                      upper_squamish=c(-123.4333,50.1500,1340),
-                      wahleach_lake=c(-121.5833,49.2333,1400),
-                      tenquille_lake=c(-122.9333,50.5333,1680))
-
-  rv <- coordinates[[site]]
-  return(rv)
-}
-
 ##North Shore Sites
-site <- 'spuzzum_creek'
-site.name <- 'Spuzzum Creek'
+site <- 'wahleach_lake'
+site.name <- 'Wahleach'
 
-model <- 'ERA'
-
+model <- 'PNWNAmet'
 
 ##Loop over sites
 model.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/'
@@ -142,21 +131,37 @@ snow.series.mean <- apply(snow.series,1,mean)
 rain.series.mean <- apply(snow.series,1,mean)
 rain.series.mean[snow.series.mean !=0] <- 0 
 
-coords <- get.coordinates(site)
+coords <- get_coordinates(site)
 lat.bnds <- coords[2]
 elev <- coords[3]
 
 ##Snow Pillow Data
-pillow.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_pillow/',site,'_asp.csv',sep='')
+pillow.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_pillow/',site,'.csv',sep='')
 pillow.data <- read.csv(pillow.file,header=T,as.is=T)
 pillow.dates <- format(as.Date(pillow.data[,2]),'%Y-%m-%d')
 pillow.swe <- pillow.data[,11] ##mm
 
-swe.sims <- read.csv(paste0(model.dir,site,'.',tolower(model),'.swe.1001.csv'),header=T,as.is=T)
-swe.mean <- apply(swe.sims,1,mean,na.rm=T)
-rm(swe.sims)
+##Slope and Aspect Values
+as.dir <- '/storage/data/projects/rci/data/prism/'
+slopes.nc <- nc_open(paste0(as.dir,'prism_slopes.nc'))
+bc.slopes <- ncvar_get(slopes.nc,'Band1')/90*pi/2
+bc.lon <- ncvar_get(slopes.nc,'lon')
+bc.lat <- ncvar_get(slopes.nc,'lat')
+nc_close(slopes.nc)
 
-season.dates <- get_snow_season_dates(swe.mean,clim.dates)
+aspects.nc <- nc_open(paste0(as.dir,'prism_aspects.nc'))
+bc.aspects <- ncvar_get(aspects.nc,'Band1')/360*2*pi
+nc_close(aspects.nc)
+
+site.slope <- bc.slopes[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]
+site.aspect <- bc.aspects[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]
+
+snow.mean <- list(swe=snow.series.mean*0.001,rain=rain.series.mean*0.001)
+results <- snow_melt_functional(Date=clim.dates, precip_mm=snow.mean, Tmax_C=clim.tasmax, Tmin_C=clim.tasmin,
+                     lat_deg=coords[2], slope=site.slope, aspect=site.aspect, tempHt=1, windHt=2, groundAlbedo=0.25,
+                      SurfEmissiv=0.95, windSp=1, forest=0, startingSnowDepth_m=0, startingSnowDensity_kg_m3=600)
+
+season.dates <- get_snow_season_dates(results$swe*1000,clim.dates)
 se.len <- length(season.dates$lengths)
 print(season.dates$starts)
 cumulative.sim.pr <- clim.data$Pr*0
@@ -192,8 +197,9 @@ ymax <- max(c(max(pillow.swe,na.rm=T),max(cumulative.sim.pr)))
 dst <- '2005-10-01'
 den <- '2008-06-30'
 
-par(mfrow=c(3,1))
+par(mfrow=c(2,1))
 par(mar=c(4.1,5,1.1,1.1))
+if (1==0) {
 plot(as.Date(pillow.dates),pillow.swe,cex=1.5,col='black',pch=16,
      xlim=c(as.Date(dst),as.Date(den)),ylim=c(0,ymax),
      main='',xlab='Date',ylab='SWE (mm)', cex.lab=1.25,axes=F)
@@ -229,6 +235,8 @@ lines(as.Date(clim.dates),clim.tas,col='orange',lwd=2)
 lines(as.Date(clim.dates),clim.tasmin,col='goldenrod',lwd=2)
 box(which='plot')
 abline(h=0)
+}
+
 
 plot(as.Date(pillow.dates),pillow.swe,cex=1,col='black',pch=16,
      xlim=c(as.Date('1989-08-01'),as.Date('2018-07-31')),ylim=c(0,ymax),
@@ -250,36 +258,28 @@ lines(as.Date(clim.dates),cumulative.snow.end,col='blue',lwd=2,lty=2)
 points(as.Date(pillow.dates),pillow.swe,cex=1,col='black',pch=16)
 text(as.Date('2005-01-01'),0.95*ymax,site.name,cex=2)
 legend('topright',legend=c('Pillow Obs.','ERA','PNWNAmet'),col=c('black','blue','green'),pch=16,cex=1.15)
-
+lines(as.Date(clim.dates),results$swe*1000,col='red',lwd=2)
 box(which='plot')
 abline(h=0)
 
-##Slope and Aspect Values
-as.dir <- '/storage/data/projects/rci/data/prism/'
-slopes.nc <- nc_open(paste0(as.dir,'prism_slopes.nc'))
-bc.slopes <- ncvar_get(slopes.nc,'Band1')/90*pi/2
-bc.lon <- ncvar_get(slopes.nc,'lon')
-bc.lat <- ncvar_get(slopes.nc,'lat')
-nc_close(slopes.nc)
 
-aspects.nc <- nc_open(paste0(as.dir,'prism_aspects.nc'))
-bc.aspects <- ncvar_get(aspects.nc,'Band1')/360*2*pi
-nc_close(aspects.nc)
+paper.coeffs <- list(a=-49.49,b=0.5628,c=1.5,d=1.0209)
+tas <- seq(-20,20,0.05)
 
-site.slope <- bc.slopes[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]
-site.aspect <- bc.aspects[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]
+paper.frac <- paper.coeffs$a*(tanh(paper.coeffs$b*(tas-paper.coeffs$c))-paper.coeffs$d)
+frac2 <- coeffs$a*(tanh(coeffs$b*(tas-coeffs$c))-coeffs$d)
 
+par(mar=c(5,5,2,1))
+plot(tas,paper.frac,type='l',lwd=2,xlab="Daily Average Temperature (\u00B0C)",ylab='Percent Snow (%)',
+              xaxs='i',yaxs='i',cex.lab=2,cex.axis=2)
+lines(tas,frac2,col='red',lwd=2)
+box(which='plot')
 
-snow.mean <- list(swe=snow.series.mean*0.001,rain=rain.series.mean*0.001)
-results <- snow.melt(Date=clim.dates, precip_mm=snow.mean, Tmax_C=clim.tasmax, Tmin_C=clim.tasmin,
-                     lat_deg=coords[2], slope=site.slope, aspect=site.aspect, tempHt=1, windHt=2, groundAlbedo=0.25,
-                      SurfEmissiv=0.95, windSp=1, forest=0, startingSnowDepth_m=0, startingSnowDensity_kg_m3=600)
-
-lines(as.Date(clim.dates),results$swe*1000,col='red',lwd=2)
 
 clim.subset <- as.Date(clim.dates) %in% as.Date(pillow.dates)
 pillow.subset <- as.Date(pillow.dates) %in% as.Date(clim.dates)
 
 print(mean(abs(results$swe[clim.subset]*1000 - pillow.swe[pillow.subset]),na.rm=T))
+print(mean((results$swe[clim.subset]*1000 - pillow.swe[pillow.subset]),na.rm=T))
 
 

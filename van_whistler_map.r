@@ -33,9 +33,9 @@ vw.plot <- function(raster.object,
   width <- 1400
   height <- 900
   ##png(file=plot.file,width=width,height=height,bg='white') 
-  png(file=plot.file,width=9,height=6,units='in',res=600,pointsize=6,bg='white')
+##  png(file=plot.file,width=9,height=6,units='in',res=600,pointsize=6,bg='white')
 ##  par(mar=c(6,6,6,5))
-   par(mar=c(5,5.5,2,2))
+##   par(mar=c(5,5.5,2,2))
 
   plot(c(),xlim=plot.window.xlim,ylim=plot.window.ylim,xaxs='i',yaxs='i',
      bg='white',# 'lightgray',
@@ -72,11 +72,11 @@ vw.plot <- function(raster.object,
      }
      plot(spTransform(us.shp,CRS("+init=epsg:4326")),add=TRUE,col='gray',xlim=plot.window.xlim,ylim=plot.window.ylim)
 
-     ocean.shp <- readOGR('/storage/data/projects/rci/data/assessments/crd/shapefiles/','west_coast_ocean',stringsAsFactors=F, verbose=F)
+     ocean.shp <- readOGR('/storage/data/projects/rci/data/assessments/shapefiles/bc_common','west_coast_ocean',stringsAsFactors=F, verbose=F)
      plot(spTransform(ocean.shp,CRS("+init=epsg:4326")),add=TRUE,col='lightsteelblue',border='lightsteelblue')
      plot(spTransform(ocean.shp,CRS("+init=epsg:4326")),add=TRUE,border='black')
-     plot(spTransform(region.shp,CRS("+init=epsg:4326")),add=TRUE,border='black',cex=0.5)
-     plot(spTransform(whistler.shp,CRS("+init=epsg:4326")),add=TRUE,border='black',cex=0.5)
+     ###plot(spTransform(region.shp,CRS("+init=epsg:4326")),add=TRUE,border='black',cex=0.5)
+     ###plot(spTransform(whistler.shp,CRS("+init=epsg:4326")),add=TRUE,border='black',cex=0.5)
 
 
      if (bias) {
@@ -90,6 +90,6 @@ vw.plot <- function(raster.object,
      legend('topright', col = "black", legend=rev(map.class.breaks.labels), pch=22, pt.bg = rev(colour.ramp), 
          pt.cex=2.0, y.intersp=0.8, title.adj=0.2, title=leg.title, xjust=0, cex=1.9)
      box(which='plot',lwd=2)
-     dev.off()
+##     dev.off()
 }
 

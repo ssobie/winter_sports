@@ -11,16 +11,16 @@ get.region.shape <- function(region,shape.dir) {
 }
 
 
-shape.dir <- paste0('/storage/data/projects/rci/data/assessments/metro_van/shapefiles/')
-region <- 'metro_van'
-region.shp <- spTransform(get.region.shape(region,shape.dir),CRS("+init=epsg:4326")) 
+##shape.dir <- paste0('/storage/data/projects/rci/data/assessments/metro_van/shapefiles/')
+##region <- 'metro_van'
+##region.shp <- spTransform(get.region.shape(region,shape.dir),CRS("+init=epsg:4326")) 
 
 glacier.dir <- '/storage/data/gis/basedata/randolph_glacier_inventory/v32/02_rgi32_WesternCanadaUS'
 glacier.name <- '02_rgi32_WesternCanadaUS'
 glacier.shp <- spTransform(get.region.shape(glacier.name,glacier.dir),CRS("+init=epsg:4326"))
 
 model <- 'ERA'
-if (1==0) {
+if (1==1) {
 ##---------------------------------------------------------------------------------
 ##MODIS 
 modis.dir <- '/storage/data/projects/rci/data/winter_sports/MODIS_VAN_WHISTLER/'
@@ -35,7 +35,7 @@ modis.coords <- nc.grid@coords
 
 ##---------------------------------------------------------------------------------
 ##SNOW MODEL
-snow.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/')
+snow.dir <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/calibrated_manual/')
 snw.file <- paste0(snow.dir,'snowdepth_BCCAQ2-PRISM_',model,'_19790101-20181031.nc')
 snw.nc <- nc_open(snw.file)
 
@@ -99,15 +99,15 @@ model.snow.raster <- list(x=lon,y=lat,z=model.snow)
 
 save.dir <- '/storage/data/projects/rci/data/winter_sports/plots/data_files/'
 
-save(ratio.raster,file=paste0(save.dir,model,'.success.rate.2018.RData'))
-save(valid.raster,file=paste0(save.dir,'modis.observable.days.2018.RData'))
-save(modis.snow.raster,file=paste0(save.dir,'modis.snow.days.2018.RData'))
-save(model.snow.raster,file=paste0(save.dir,model,'.snow.days.2018.RData'))
+save(ratio.raster,file=paste0(save.dir,model,'.success.rate.2020.RData'))
+save(valid.raster,file=paste0(save.dir,'modis.observable.days.2020.RData'))
+save(modis.snow.raster,file=paste0(save.dir,'modis.snow.days.2020.RData'))
+save(model.snow.raster,file=paste0(save.dir,model,'.snow.days.2020.RData'))
 
 nc_close(snc.nc)
 nc_close(snw.nc)
 
-browser()
+##browser()
 
 }
 
@@ -172,7 +172,7 @@ vw.plot(sp.raster,
 
 ##---------------------------------------------------------------------------------
 ##Absolute Difference Sum
-if (1==1) {
+if (1==0) {
 load(paste0(save.dir,'modis.snow.days.2018.RData'))
 load(paste0(save.dir,'ERA.snow.days.2018.RData'))
 model.snow <- model.snow.raster$z
@@ -219,7 +219,7 @@ vw.plot(ratio.raster,
 
 
 }
-browser()
+##browser()
 ##---------------------------------------------------------------------------------
 ##MODIS Total Snow Cover
 if (1==0) {
@@ -240,14 +240,14 @@ vw.plot(modis.snow.raster,
 
 ##---------------------------------------------------------------------------------
 ##Six panel figure
-if (1==0) {
-plot.file <- '/storage/data/projects/rci/data/winter_sports/plots/modis.metro.van.comparison.data.2018.png'
+if (1==1) {
+plot.file <- '/storage/data/projects/rci/data/winter_sports/plots/modis.metro.van.comparison.data.2020_with_manual2.png'
 png(plot.file,width=1800,height=1800)
 par(mfrow=c(3,2))
 
 ##Observable days
 plot.title <- 'MODIS Observable Days' 
-load(paste0(save.dir,'modis.observable.days.2018.RData'))
+load(paste0(save.dir,'modis.observable.days.2020.RData'))
 map.range <- c(0,3500) ##range(cover.valid,na.rm=T)
 leg.title <- 'Days'
 class.breaks <- c(0,1000,seq(1250,3500,by=250)) ##get.class.breaks('tasmax',type='past',map.range,manual.breaks='')
@@ -263,7 +263,7 @@ vw.plot(valid.raster,
 ##Total Snow Cover
 plot.title <- 'MODIS Days with Snow Cover'
 leg.title <- 'Days'
-load(paste0(save.dir,'modis.snow.days.2018.RData'))
+load(paste0(save.dir,'modis.snow.days.2020.RData'))
 map.range <- c(0,1500) ##range(modis.snow,na.rm=T)
 class.breaks <- c(0,10,20,50,100,300,900,1500,5000) ##get.class.breaks('pr',type='prct',map.range,manual.breaks='')
 map.class.breaks.labels <- get.class.break.labels(class.breaks,greater.sign=TRUE)
@@ -277,7 +277,7 @@ vw.plot(modis.snow.raster,
 
 ##Success Rate for ERA
 plot.title <- paste0('ERA-Interim - MODIS All Days Success Rate')
-load(paste0(save.dir,'ERA.success.rate.2018.RData'))
+load(paste0(save.dir,'ERA.success.rate.2020.RData'))
 map.range <- c(70,100)
 leg.title <- 'Success (%)'
 class.breaks <- c(0,get.class.breaks('snc',type='past',map.range,manual.breaks=''))
@@ -293,7 +293,7 @@ vw.plot(ratio.raster,
 
 ##Success Rate for NCEP2
 plot.title <- paste0('NCEP2 - MODIS All Days Success Rate')
-load(paste0(save.dir,'NCEP2.success.rate.2018.RData'))
+load(paste0(save.dir,'NCEP2.success.rate.2020.RData'))
 map.range <- c(70,100)
 leg.title <- 'Success (%)'
 class.breaks <- c(0,get.class.breaks('snc',type='past',map.range,manual.breaks=''))
@@ -309,16 +309,16 @@ vw.plot(ratio.raster,
 
 
 plot.title <- paste0('ERA-Interim - MODIS Snow Days Percent Difference')
-load(paste0(save.dir,'ERA.snow.days.2018.RData'))
+load(paste0(save.dir,'ERA.snow.days.2020.RData'))
 model.snow <- model.snow.raster$z
 modis.snow <- modis.snow.raster$z
 lon <- model.snow.raster$x
 lat <- model.snow.raster$y
-leg.title <- 'Diff. (%)'
-snow.prct <- (model.snow-modis.snow)/modis.snow*100
+leg.title <- 'Diff. (days)'
+snow.prct <- (model.snow-modis.snow)##/modis.snow*100
 sp.raster <- list(x=lon,y=lat,z=snow.prct)
 map.range <- range(snow.prct,na.rm=T)
-class.breaks <- c(-5000,-100,-80,-60,-40,-20,-10,0,10,20,50,100,5000) ##c(-1000,-500,-250,-100,-50,-25,0,25,50,100,200,300,1000)  ##
+class.breaks <- class.breaks <- c(-5000,seq(-500,500,50),5000) ##c(-5000,-100,-80,-60,-40,-20,-10,0,10,20,50,100,5000) ##c(-1000,-500,-250,-100,-50,-25,0,25,50,100,200,300,1000)  ##
 map.class.breaks.labels <- get.class.break.labels(class.breaks,greater.sign=TRUE,lesser.sign=TRUE)
 colour.ramp <- get.legend.colourbar(var.name='pr',map.range=map.range,
                                     my.bp=0,class.breaks=class.breaks,
@@ -334,17 +334,17 @@ vw.plot(sp.raster,
 ##png(plot.file,width=1600,height=1600)
 
 plot.title <- paste0('NCEP2 - MODIS Snow Days Percent Difference')
-load(paste0(save.dir,'NCEP2.snow.days.2018.RData'))
+load(paste0(save.dir,'NCEP2.snow.days.2020.RData'))
 model.snow <- model.snow.raster$z
 modis.snow <- modis.snow.raster$z
 lon <- model.snow.raster$x
 lat <- model.snow.raster$y
 
-leg.title <- 'Diff. (%)'
-snow.prct <- (model.snow-modis.snow)/modis.snow*100
+leg.title <- 'Diff. (days)'
+snow.prct <- (model.snow-modis.snow) ##/modis.snow*100
 sp.raster <- list(x=lon,y=lat,z=snow.prct)
 map.range <- range(snow.prct,na.rm=T)
-class.breaks <- c(-5000,-100,-80,-60,-40,-20,-10,0,10,20,50,100,5000) ##c(-1000,-500,-250,-100,-50,-25,0,25,50,100,200,300,1000)  ##
+class.breaks <- c(-5000,seq(-500,500,50),5000) ##c(-5000,-100,-80,-60,-40,-20,-10,0,10,20,50,100,5000) ##c(-1000,-500,-250,-100,-50,-25,0,25,50,100,200,300,1000)  ##
 map.class.breaks.labels <- get.class.break.labels(class.breaks,greater.sign=TRUE,lesser.sign=TRUE)
 colour.ramp <- get.legend.colourbar(var.name='pr',map.range=map.range,
                                     my.bp=0,class.breaks=class.breaks,

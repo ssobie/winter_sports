@@ -2,36 +2,11 @@
 library(ncdf4)
 library(raster)
 
-
-get.coordinates <- function(site) {
-
-  coordinates <- list(callaghan=c(-123.1036,50.1383278,1009),
-                      orchid_lake=c(-123.0519638,49.53678,1178),
-                      palisade_lake=c(-123.0321944,49.454433,898),
-                      grouse_mountain=c(-123.0774472,49.383655,1126),
-                      dog_mountain=c(-122.96255,49.37251944,1007),
-                      dickson_lake=c(-122.06984166,49.3168194,1147),
-                      stave_lake=c(-122.315805,49.58030277,1211),
-                      nahatlatch=c(-122.059261,49.825866,1530),
-                      wahleach=c(-121.57945,49.2298694,1395),
-                      klesilkwa=c(-121.3086527,49.129438,610),
-                      lightning_lake=c(-120.850205,49.044788,1254),
-                      brookmere=c(-120.87397,49.815027,994),
-                      shovelnose_mountain=c(-120.864175,49.8546305,1456),
-                      hamilton_hill=c(-120.7955805,49.4988027,1477),
-                      spuzzum_creek=c(-121.686,49.74,1197),
-                      chilliwack_river=c(-121.71667,49.0333,1600),
-                      upper_squamish=c(-123.4333,50.1500,1340),
-                      wahleach_lake=c(-121.5833,49.2333,1400),
-                      tenquille_lake=c(-122.9333,50.5333,1680))
-
-  rv <- coordinates[[site]]
-  return(rv)
-}
+source('/storage/home/ssobie/code/repos/winter_sports/site.coordinates.r',chdir=T)
 
 get_PRISM_values <- function(site, prism.var, file,buffer) {
 
-  coords <- get.coordinates(site)
+  coords <- get_coordinates(site)
   plot.title <- site
 
   nc <- nc_open(file)
@@ -53,7 +28,7 @@ get_PRISM_values <- function(site, prism.var, file,buffer) {
 
 get_PRISM_elevs <- function(site,file,buffer) {
 
-  coords <- get.coordinates(site)
+  coords <- get_coordinates(site)
   plot.title <- site
 
   nc <- nc_open(file)
@@ -92,30 +67,28 @@ get_PRISM_tiff_elevs <- function(site, dem, buffer) {
   lat.ix <- which.min(abs(lat-lat.bnds))
 
   dem.elev <- dem[(lat.ix-buffer):(lat.ix+buffer),(lon.ix-buffer):(lon.ix+buffer),1]
-browser()
+
   return(list(site=elev,dem=dem.elev))
 }
 
-  sites <- c('callaghan',
-             'orchid_lake',
-             'palisade_lake',
-             'grouse_mountain',
-             'dog_mountain',
-             'stave_lake',
-             'nahatlatch',
-             'wahleach',
-             'klesilkwa',
-             'lightning_lake',
-             'brookmere',
-             'shovelnose_mountain',
-             'hamilton_hill',
-             'spuzzum_creek',
-             'chilliwack_river',
-             'upper_squamish',
-             'tenquille_lake')
 
-##site <- 'palisade_lake'
-##site.name <- 'Palisade Lake'
+type <- 'evaluation'
+sites <- c('blackwall_peak_course','boston_bar_lower','boston_bar_upper','burwell_lake',
+           'chapman_creek','cornwall_hills','diamond_head','edwards_lake',
+           'hollyburn','hope',
+           'loch_lomond','lytton','mount_seymour','new_tashme',
+           'ottomite','pavilion_mountain',
+           'sumallo_river','tenquille_course','whistler_mountain','wolverine_creek' )
+
+type <- 'calibration'
+sites <- c('shovelnose_mountain','brookmere','lightning_lake','callaghan','orchid_lake',
+           'palisade_lake','grouse_mountain','dog_mountain','stave_lake','nahatlatch',
+           'wahleach','klesilkwa','hamilton_hill','dickson_lake','disappointment_lake',
+           'duffey_lake','gnawed_mountain','highland_valley','mcgillivray_pass',
+           'sumallo_river_west','great_bear','upper_squamish','spuzzum_creek','chilliwack_river','tenquille_lake',
+           'wahleach_lake','blackwall_peak_pillow')
+
+
 tasmax.lapses <- matrix(0,nrow=length(sites),ncol=12)
 tasmin.lapses <- matrix(0,nrow=length(sites),ncol=12)
 pr.lapses <- matrix(0,nrow=length(sites),ncol=12)
@@ -156,9 +129,9 @@ tasmax.lapses <- rbind(c('Site',month.abb),cbind(sites,round(tasmax.lapses,3)))
 tasmin.lapses <- rbind(c('Site',month.abb),cbind(sites,round(tasmin.lapses,3)))
 pr.lapses <- rbind(c('Site',month.abb),cbind(sites,round(pr.lapses,3)))
 
-tasmax.file <- '/storage/data/projects/rci/data/winter_sports/course_and_pillow_prism_tasmax_lapse_rates.csv'
-tasmin.file <- '/storage/data/projects/rci/data/winter_sports/course_and_pillow_prism_tasmin_lapse_rates.csv'
-pr.file <- '/storage/data/projects/rci/data/winter_sports/course_and_pillow_prism_pr_lapse_rates.csv'
+tasmax.file <- paste0('/storage/data/projects/rci/data/winter_sports/course_and_pillow_prism_tasmax_lapse_rates_',type,'.csv')
+tasmin.file <- paste0('/storage/data/projects/rci/data/winter_sports/course_and_pillow_prism_tasmin_lapse_rates_',type,'.csv')
+pr.file <- paste0('/storage/data/projects/rci/data/winter_sports/course_and_pillow_prism_pr_lapse_rates_',type,'.csv')
 
 write.table(tasmax.lapses,file=tasmax.file,sep=',',col.name=F,row.name=F,quote=F)
 write.table(tasmin.lapses,file=tasmin.file,sep=',',col.name=F,row.name=F,quote=F)

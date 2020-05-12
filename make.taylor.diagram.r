@@ -2,40 +2,14 @@
 ##snow course sites and MODIS snow cover
 library(ncdf4)
 library(plotrix)
+library(TeachingDemos)
 
 source('/storage/data/projects/rci/stat.downscaling/bccaq2/code/new.netcdf.calendar.R',chdir=T)
-
-
-get.coordinates <- function(site) {
-
-  coordinates <- list(callaghan=c(-123.1036,50.1383278,1009),
-                      orchid_lake=c(-123.0519638,49.53678,1178),
-                      palisade_lake=c(-123.0321944,49.454433,898),
-                      grouse_mountain=c(-123.0774472,49.383655,1126),
-                      dog_mountain=c(-122.96255,49.37251944,1007),
-                      dickson_lake=c(-122.06984166,49.3168194,1147),
-                      stave_lake=c(-122.315805,49.58030277,1211),
-                      nahatlatch=c(-122.059261,49.825866,1530),
-                      wahleach=c(-121.57945,49.2298694,1395),
-                      klesilkwa=c(-121.3086527,49.129438,610),
-                      lightning_lake=c(-120.850205,49.044788,1254),
-                      brookmere=c(-120.87397,49.815027,994),
-                      shovelnose_mountain=c(-120.864175,49.8546305,1456),
-                      hamilton_hill=c(-120.7955805,49.4988027,1477),
-                      spuzzum_creek=c(-121.686,49.674,1197),
-                      chilliwack_river=c(-121.71667,49.0333,1600),
-                      upper_squamish=c(-123.4333,50.1500,1340),
-                      wahleach_lake=c(-121.5833,49.2333,1400),
-                      tenquille_lake=c(-122.9333,50.5333,1680))
-
-  rv <- coordinates[[site]]
-  return(rv)
-}
-
+source('/storage/home/ssobie/code/repos/winter_sports/site.coordinates.r',chdir=T)
 
 ##Modified version of Taylor diagram to enable better size control
 
-taylor2.diagram <- function(ref, model, add = FALSE, col = "red", pch = 19, pos.cor = TRUE, 
+taylor2_diagram <- function(ref, model, add = FALSE, col = "red", pch = 19, pos.cor = TRUE, 
     xlab = "", ylab = "", main = "Taylor Diagram", show.gamma = FALSE, 
     ngamma = 3, gamma.col = 8, sd.arcs = 0, ref.sd = FALSE, sd.method = "sample", 
     grad.corr.lines = c(0.2, 0.4, 0.6, 0.8, 0.9), pcex = 1, cex.axis = 1, 
@@ -62,8 +36,10 @@ taylor2.diagram <- function(ref, model, add = FALSE, col = "red", pch = 19, pos.
         sd.f <- sd.f/sd.r
         sd.r <- 1
     }
-    maxsd <- 1.5 * max(sd.f, sd.r)
+    maxsd <- 2.0 ##1.5 * max(sd.f, sd.r)
     oldpar <- par("mar", "xpd", "xaxs", "yaxs")
+
+
     if (!add) {
         if (pos.cor) {
             if (nchar(ylab) == 0) 
@@ -77,7 +53,8 @@ taylor2.diagram <- function(ref, model, add = FALSE, col = "red", pch = 19, pos.
                   gcl), c(0, maxsd * sqrt(1 - gcl^2)), lty = 3)
             }
             segments(c(0, 0), c(0, 0), c(0, maxsd), c(maxsd, 
-                0))
+                0),lwd=1.25)
+            print('At segments')
             axis.ticks <- pretty(c(0, maxsd))
             axis.ticks <- axis.ticks[axis.ticks <= maxsd]
             axis(1, at = axis.ticks, cex.axis = cex.axis)
@@ -219,229 +196,258 @@ taylor2.diagram <- function(ref, model, add = FALSE, col = "red", pch = 19, pos.
             S <- (2 * (1 + R))/(sd.f + (1/sd.f))^2
         }
     }
+    segments(c(0, 0), c(0, 0), c(0, maxsd), c(maxsd, 
+    0),lwd=1.25)
+    xcurve <- cos(seq(0, pi/2, by = 0.01)) * maxsd
+    ycurve <- sin(seq(0, pi/2, by = 0.01)) * maxsd
+    lines(xcurve, ycurve,lwd=1.25)
+
     
-    print(paste0('TD SD: ',round(sd.f,2)))
-    print(paste0('TD Cor: ',round(R,2)))
-    points(sd.f * R, sd.f * sin(acos(R)), pch = pch, col = col, 
-        cex = pcex)
+    #print(paste0('TD SD: ',round(sd.f,2)))
+    #print(paste0('TD Cor: ',round(R,2)))
+###   points(sd.f * R, sd.f * sin(acos(R)), pch = pch, col = 'black',bg=col, 
+###        cex = pcex)
+    shadowtext(sd.f * R, sd.f * sin(acos(R)), pch, col = col,bg='black', 
+               cex = 1.2,r=0.15)
 
     invisible(oldpar)
+    return(R)
 }
 
+##--------------------------------------
 
+read_snow_sim <- function(site,model,reanalysis,type,model.dir) {
 
-##Slope and Aspect Values
-as.dir <- '/storage/data/projects/rci/data/prism/'
-slopes.nc <- nc_open(paste0(as.dir,'prism_slopes.nc'))
-bc.slopes <- ncvar_get(slopes.nc,'Band1')/90*pi/2
-bc.lon <- ncvar_get(slopes.nc,'lon')
-bc.lat <- ncvar_get(slopes.nc,'lat')
-nc_close(slopes.nc)
+    ##PNWNAmet PRISM calibration
+    swe.file <- paste0(model.dir,site,'_',model,'_',reanalysis,'_',type,'_snow_model_data.csv')
+    swe.data <- read.csv(swe.file,header=T,as.is=T)
+    swe.values <- swe.data$SWE*1000
+    swe.dates <- as.Date(swe.data$Dates)
+    rv <- list(dates=swe.dates,swe=swe.values)
+    return(rv)
+}
 
-aspects.nc <- nc_open(paste0(as.dir,'prism_aspects.nc')) 
-bc.aspects <- ncvar_get(aspects.nc,'Band1')/360*2*pi
-nc_close(aspects.nc)
+##---------------------------------------
+##Observation data
+read_course_obs <- function(site) {
 
+   obs.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_courses/',site,'_snow_course.csv',sep='')
+   obs.data <- read.csv(obs.file,header=T,as.is=T)
+   obs.dates <- format(as.Date(obs.data[,1]),'%Y-%m-%d')
+   obs.swe <- obs.data[,3] ##mm
+   obs.na <- is.na(obs.swe)
+   obs.swe <- obs.swe[!obs.na]
+   obs.dates <- as.Date(obs.dates[!obs.na])
 
+   rv <- list(dates=obs.dates,swe=obs.swe)
+   return(rv)
+}
+
+read_pillow_obs <- function(site) {
+
+   obs.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_pillow/',site,'.csv',sep='')
+   obs.data <- read.csv(obs.file,header=T,as.is=T)
+   obs.dates <- format(as.Date(obs.data[,2]),'%Y-%m-%d')
+   obs.swe <- obs.data[,11] ##mm
+   obs.na <- is.na(obs.swe)
+   obs.swe <- obs.swe[!obs.na]
+   obs.dates <- as.Date(obs.dates[!obs.na])
+   rv <- list(dates=obs.dates,swe=obs.swe)
+   return(rv)
+}
+
+##--------------------------------------
+
+make_taylor_diagram <- function(active.courses,active.letters,
+                                inactive.courses,inactive.letters,
+                                pillow.sites,pillow.letters,
+                                model,type,colour,model.dir) {
+   cor.vals <- c()
+   course.nums <- c()
+   for (i in seq_along(active.courses)) {
+      site <- active.courses[i]
+      #print(site)
+      coords <- get_coordinates(site)
+      course.obs <- read_course_obs(site)
+      snow.sim <- read_snow_sim(site,model,reanalysis='PNWNAmet',type,model.dir)
+
+      date.subset <- snow.sim$dates %in% course.obs$dates
+      obs.subset <- course.obs$dates %in% snow.sim$dates
+      
+      if (i==1) { ## & model=='PNWNAmet') {
+        cr <- taylor2_diagram(course.obs$swe[obs.subset],snow.sim$swe[date.subset],sd.arcs=TRUE,normalize=T,
+                   main=model,col='green',pcex=1.5,cex.axis=1.5,cex.lab=1.5,cex.main=1.75,pch=active.letters[i]) ##24                 
+      } else {
+        cr <- taylor2_diagram(course.obs$swe[obs.subset],snow.sim$swe[date.subset],sd.arcs=TRUE,normalize=T,
+                   add=TRUE,col='green',pcex=1.5,pch=active.letters[i]) ##24
+      }
+      cor.vals <- c(cor.vals,cr)
+      course.nums <- c(course.nums,length(course.obs$swe[obs.subset]))
+    }
+
+   for (i in seq_along(inactive.courses)) {
+      site <- inactive.courses[i]
+      print(site)
+      coords <- get_coordinates(site)
+      course.obs <- read_course_obs(site)
+      snow.sim <- read_snow_sim(site,model,reanalysis='PNWNAmet',type,model.dir)
+
+      date.subset <- snow.sim$dates %in% course.obs$dates
+      obs.subset <- course.obs$dates %in% snow.sim$dates
+      ##if (site=='wolverine_creek') {browser()}
+      cr <- taylor2_diagram(course.obs$swe[obs.subset],snow.sim$swe[date.subset],sd.arcs=TRUE,normalize=T,
+                      add=TRUE,col='red',pcex=1.5,pch=inactive.letters[i]) ##25
+      cor.vals <- c(cor.vals,cr)
+      course.nums <- c(course.nums,length(course.obs$swe[obs.subset]))
+    }
+
+   for (j in seq_along(pillow.sites)) {
+      site <- pillow.sites[j]
+      print(site)
+      coords <- get_coordinates(site)
+      pillow.obs <- read_pillow_obs(site)
+      snow.sim <- read_snow_sim(site,model,reanalysis='PNWNAmet',type,model.dir)
+
+      date.subset <- snow.sim$dates %in% pillow.obs$dates
+      obs.subset <- pillow.obs$dates %in% snow.sim$dates
+
+      cr <- taylor2_diagram(pillow.obs$swe[obs.subset],snow.sim$swe[date.subset],sd.arcs=TRUE,normalize=T,
+                      add=TRUE,col='orange',pcex=1.5,pch=pillow.letters[j]) ##23
+      cor.vals <- c(cor.vals,cr)
+      course.nums <- c(course.nums,length(pillow.obs$swe[obs.subset]))
+    }
+
+    ##print('Inputs')
+    ##print(paste0('NCEP2 SD: ',round(sd(ncep2.swe.mean[ncep2.date.subset] / sd(obs.swe[ncep2.obs.subset])),2)))
+    ##print(paste0('NCEP2 Cor: ',round(cor(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset]),2)))
+
+    ##print(paste0('ERA SD: ',round(sd(era.swe.mean[era.date.subset] / sd(obs.swe[era.obs.subset])),2)))
+    ##print(paste0('ERA Cor: ',round(cor(obs.swe[era.obs.subset],era.swe.mean[era.date.subset]),2)))
+
+    return(list(cor=cor.vals,obs=course.nums))
+}
 
 ##-----------------------------------------------------------
 ##Snow Courses
 
 if (1==1) {
 
-sites <- c('shovelnose_mountain',
-           'brookmere',
-           'lightning_lake',
-           'callaghan',
-           'orchid_lake',
-           'palisade_lake',
-           'grouse_mountain',
-           'dog_mountain',
-           'stave_lake',
-           'nahatlatch',
-           'wahleach',
-           'klesilkwa',
-           'hamilton_hill',
-           'chilliwack_river',
-           'spuzzum_creek',
-           'tenquille_lake',
-           'upper_squamish')
-obs.type <- c(rep('course',13),rep('asp',4))
-site.letter <- c('M','B','L','C','O','P','G','D','S','N','W','K','H','R','Z','T','U')
 
-model.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sims/'
+}
+ 
+##Old Sites 
+if (1==0) {
+course.sites <- c('shovelnose_mountain','brookmere','lightning_lake','callaghan','orchid_lake','palisade_lake',
+                  'grouse_mountain','dog_mountain','stave_lake','nahatlatch','wahleach','klesilkwa','hamilton_hill')
+course.letters <- c('M','B','L','C','O','P','G','D','S','N','W','K','H')
+pillow.sites <- c('chilliwack_river','spuzzum_creek','tenquille_lake','upper_squamish')
+pillow.letters <- c('R','Z','T','U')
 
-ncep2.file <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/grouse_mountain_NCEP2_800m_data.csv'
-
-course.site.swe <- vector(mode='list',length=length(sites))
-ncep2.site.swe <- vector(mode='list',length=length(sites))
-era.site.swe <- vector(mode='list',length=length(sites))
-
-course.site.pack <- vector(mode='list',length=length(sites))
-ncep2.site.pack <- vector(mode='list',length=length(sites))
-era.site.pack <- vector(mode='list',length=length(sites))
-
-ncep2.file <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/grouse_mountain_NCEP2_800m_data.csv'
-ncep2.data <- read.csv(ncep2.file,header=T,as.is=T)
-
-ncep2.swe.sims <- matrix(0,nrow=10,ncol=dim(ncep2.data)[1])
-ncep2.snow.sims <- matrix(0,nrow=10,ncol=dim(ncep2.data)[1])
-
-era.file <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/grouse_mountain_ERA_800m_data.csv'
-era.data <- read.csv(era.file,header=T,as.is=T)
-
-era.swe.sims <- matrix(0,nrow=10,ncol=dim(era.data)[1])
-era.snow.sims <- matrix(0,nrow=10,ncol=dim(era.data)[1])
-
-snodas.file <- "/storage/data/projects/rci/data/winter_sports/obs/SNODAS/ncdf4_files/swe_snodas_modis_grid_van_whistler_20100101-20181231.nc"
-snc <- nc_open(snodas.file)
-lon <- ncvar_get(snc,'lon')
-lat <- ncvar_get(snc,'lat')
-snodas.dates <- as.character(netcdf.calendar(snc))
+}
 
 
 
+model.dir <- '/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow_series/'
 
 ##Loop over sites
 plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/'
-type <- 'SWE'
-png(file=paste0(plot.dir,'ncep2.era.swe.',type,'.taylor.diagram.2018.png'),width=800,height=800)
+type <- 'PRISM_TPS'
+plot.file <- paste0(plot.dir,'pnwnamet.era5.',type,'.swe.taylor.diagram.2020.letters.png')
 
-for (i in seq_along(sites)) {
-    site <- sites[i]
-    print(site)
-    ##Reanalysis 800m data
-    ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_NCEP2_800m_data.csv')
-    ##if (site=='spuzzum_creek') {
-    ##    ncep2.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_NCEP2_800m_data_193_121.csv')
-    ##}
+png(file=plot.file,width=10,height=5,units='in',res=600,pointsize=6,bg='white')
 
-    ncep2.data <- read.csv(ncep2.file,header=T,as.is=T)
-    ncep2.pr <- ncep2.data$Pr
-    ncep2.tasmax <- ncep2.data$Tasmax
-    ncep2.tasmin <- ncep2.data$Tasmin
-    ncep2.tas <- ncep2.data$Tas
-    ncep2.dates <- ncep2.data$Dates
+par(mfrow=c(1,2))
 
-    era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/TPS/snow/snow_sites/',site,'_ERA_800m_data.csv')
-    ##if (site=='spuzzum_creek') {
-    ##    era.file <- paste0('/storage/data/projects/rci/data/winter_sports/BCCAQ2/snow_sites/sp_testing/',site,'_ERA_800m_data_193_121.csv')
-    ##}
+##------------------------------------------
 
-    era.data <- read.csv(era.file,header=T,as.is=T)
-    era.pr <- era.data$Pr
-    era.tasmax <- era.data$Tasmax
-    era.tasmin <- era.data$Tasmin
-    era.tas <- era.data$Tas
-    era.dates <- era.data$Dates
+##Locations fo PNWNAmet Evaluation
 
-    coords <- get.coordinates(site)
-    lat.bnds <- coords[2]
-    elev <- coords[3]
-    site.slope <- bc.slopes[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]    
-    site.aspect <- bc.aspects[which.min(abs(coords[1]-bc.lon)),which.min(abs(coords[2]-bc.lat))]    
+cal.courses <- c('brookmere','callaghan','dickson_lake','disappointment_lake','dog_mountain','duffey_lake',
+                    'gnawed_mountain','great_bear','grouse_mountain','hamilton_hill','highland_valley',
+                    'klesilkwa','lightning_lake','mcgillivray_pass','nahatlatch','orchid_lake','palisade_lake',
+                    'shovelnose_mountain','stave_lake','sumallo_river_west','wahleach')
+cal.letters <- c('BR','CG','DL',
+                 'DI','DM','DU','GM','GB',
+                 'GR','HH','HV','KL','LL',
+                 'MP','NA','OL',
+                 'PL','SM',
+                 'SL','SW','WA')             
 
-    ##Observation data
-    if (obs.type[i] == 'course') {
-      obs.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_courses/',site,'_snow_course.csv',sep='')
-      obs.data <- read.csv(obs.file,header=T,as.is=T)
-      obs.dates <- format(as.Date(obs.data[,1]),'%Y-%m-%d')
-      obs.swe <- obs.data[,3] ##mm
-      obs.na <- is.na(obs.swe)
-      obs.pack <- obs.data[,2] ##cm
-      obs.dense <-  obs.data[,4]
-      obs.swe <- obs.swe[!obs.na]
-      obs.dates <- obs.dates[!obs.na]
+eval.courses <- c('blackwall_peak_course','boston_bar_lower','boston_bar_upper','burwell_lake',
+                  'chapman_creek','cornwall_hills','diamond_head','edwards_lake',
+                  'hollyburn','hope',
+                  'loch_lomond','lytton','mount_seymour','new_tashme',
+                  'ottomite','pavilion_mountain',##'shalalth',
+                      'sumallo_river','tenquille_course','whistler_mountain','wolverine_creek' )
+eval.letters <- c('BP','BL','BU','BW','CC','CH','DH','EL',
+                  'HB','HO','LO','LY','MS','NT','OT','PM',
+                  'SR','TL','WM','WC') ##'SH'
 
-    } else {
-       obs.file <- paste('/storage/data/projects/rci/data/winter_sports/obs/snow_pillow/',site,'_asp.csv',sep='')
-       obs.data <- read.csv(obs.file,header=T,as.is=T)
-       obs.dates <- format(as.Date(obs.data[,2]),'%Y-%m-%d')
-       obs.tasmax <- obs.data[,3]
-       obs.tasmin <- obs.data[,5]
-       obs.tas <- (obs.tasmax + obs.tasmin)/2
-       obs.precip <- obs.data[,7]##mm
-       obs.swe <- obs.data[,11] ##mm
-       obs.na <- is.na(obs.swe)
-       obs.pack <- obs.data[,13] ##cm
-       obs.swe <- obs.swe[!obs.na]
-       obs.dates <- obs.dates[!obs.na]
-    }        
-
-    ##SNODAS Data at Courses
-    lon.ix <- which.min(abs(coords[1]-lon))
-    lat.ix <- which.min(abs(coords[2]-lat))
-    snodas.swe <- ncvar_get(snc,'swe',start=c(lon.ix,lat.ix,1),count=c(1,1,-1))
-    snodas.date.subset <- format(as.Date(snodas.dates),'%Y-%m-%d') %in% obs.dates
-    snodas.obs.subset <- obs.dates %in% format(as.Date(snodas.dates),'%Y-%m-%d')
-  
-
-##    print(order(obs.dates) - 1:length(obs.dates))
-
-    ncep2.date.subset <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% obs.dates
-    ncep2.obs.subset <- obs.dates %in% format(as.Date(ncep2.dates),'%Y-%m-%d')
-    snodas.ncep2.subset <- format(as.Date(snodas.dates),'%Y-%m-%d') %in% format(as.Date(ncep2.dates),'%Y-%m-%d')
-    ncep2.snodas.subset <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% format(as.Date(snodas.dates),'%Y-%m-%d')
-
-    era.date.subset <- format(as.Date(era.dates),'%Y-%m-%d') %in% obs.dates
-    era.obs.subset <- obs.dates %in% format(as.Date(era.dates),'%Y-%m-%d')   
-    snodas.era.subset <- format(as.Date(snodas.dates),'%Y-%m-%d') %in% format(as.Date(era.dates),'%Y-%m-%d')
-    era.snodas.subset <- format(as.Date(era.dates),'%Y-%m-%d') %in% format(as.Date(snodas.dates),'%Y-%m-%d')
-
-    model.match <- format(as.Date(ncep2.dates),'%Y-%m-%d') %in% format(as.Date(era.dates),'%Y-%m-%d')
-
-    era.swe.sims <- read.csv(paste0(model.dir,site,'.era.swe.1001.csv'),header=T,as.is=T)
-    era.swe.mean <- apply(era.swe.sims,1,mean,na.rm=T)
-
-    ncep2.swe.sims <- read.csv(paste0(model.dir,site,'.ncep2.swe.1001.csv'),header=T,as.is=T) ##[model.match,]
-    ncep2.swe.mean <- apply(ncep2.swe.sims,1,mean,na.rm=T)
-
-    if (site=='klesilkwa') {
-##      browser()
-    }
-
-    print('Inputs')
-    print(paste0('NCEP2 SD: ',round(sd(ncep2.swe.mean[ncep2.date.subset] / sd(obs.swe[ncep2.obs.subset])),2)))
-    print(paste0('NCEP2 Cor: ',round(cor(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset]),2)))
-
-    print(paste0('ERA SD: ',round(sd(era.swe.mean[era.date.subset] / sd(obs.swe[era.obs.subset])),2)))
-    print(paste0('ERA Cor: ',round(cor(obs.swe[era.obs.subset],era.swe.mean[era.date.subset]),2)))
+pillow.sites <- c('blackwall_peak_pillow','chilliwack_river','spuzzum_creek','tenquille_lake','upper_squamish','wahleach_lake')
+pillow.letters <- c('BP','CR','SC','TQ','US','WC')
 
 
-    if (type=='SNODAS') {
-      if (i==1) {
-        taylor2.diagram(snodas.swe[snodas.ncep2.subset],ncep2.swe.mean[ncep2.snodas.subset],sd.arcs=TRUE,normalize=T,
-                   main='SNODAS SWE Comparison',pch=site.letter[i],col='green',pcex=1.5,cex.axis=1.5,cex.lab=1.5,cex.main=1.75)                  
-        taylor2.diagram(snodas.swe[snodas.era.subset],era.swe.mean[era.snodas.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5,cex=1.5)                        
-      } else {
-        taylor2.diagram(snodas.swe[snodas.ncep2.subset],ncep2.swe.mean[ncep2.snodas.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],add=T,col='green',pcex=1.5)
-        taylor2.diagram(snodas.swe[snodas.era.subset],era.swe.mean[era.snodas.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5)                  
-      }
-    } else {
-      if (i==1) {
-        taylor2.diagram(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
-                   main='',pch=site.letter[i],col='green',pcex=1.5,cex.axis=1.5,cex.lab=1.5,cex.main=1.75)                  
-        taylor2.diagram(obs.swe[era.obs.subset],era.swe.mean[era.date.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5,cex=1.5)                     
-      } else {
-        taylor2.diagram(obs.swe[ncep2.obs.subset],ncep2.swe.mean[ncep2.date.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],add=T,col='green',pcex=1.5)
-        taylor2.diagram(obs.swe[era.obs.subset],era.swe.mean[era.date.subset],sd.arcs=TRUE,normalize=T,
-                   pch=site.letter[i],col='blue',add=TRUE,pcex=1.5)                  
-      }
-    }
-}        
+pnw.cor <- make_taylor_diagram(cal.courses,cal.letters,
+                    eval.courses,eval.letters,
+                    pillow.sites,pillow.letters,
+                    model='PNWNAmet',type=type,'blue',model.dir)
 
-##legend('topright',legend=c('ERA','NCEP2','SNODAS'),col=c('blue','green','red'),pch=16,cex=1.5)
-legend('topright',legend=c('ERA','NCEP2'),col=c('blue','green'),pch=16,cex=1.5)
+print('-----')
+print('ERA5')
+
+##Sites for ERA5 Evaluation
+cal.courses <- c('brookmere','callaghan','dickson_lake','disappointment_lake','dog_mountain','duffey_lake',
+                    'gnawed_mountain','great_bear','grouse_mountain','hamilton_hill','highland_valley',
+                    'klesilkwa','lightning_lake','mcgillivray_pass','nahatlatch','orchid_lake','palisade_lake',
+                    'shovelnose_mountain','stave_lake','sumallo_river_west','wahleach')
+cal.letters <- c('BR','CG','DL',
+                 'DI','DM','DU','GB','GM',
+                 'GR','HH','HV','KL','LL',
+                 'MP','NA','OL',
+                 'PL','SM',
+                 'SL','SW','WA')             
+
+eval.courses <- c('blackwall_peak_course','boston_bar_lower','boston_bar_upper','burwell_lake',
+                  'chapman_creek','cornwall_hills','diamond_head','edwards_lake',
+                  'hollyburn',
+                  'loch_lomond','mount_seymour','new_tashme',
+                  'ottomite','pavilion_mountain',##'shalalth',
+                      'sumallo_river','tenquille_course','whistler_mountain','wolverine_creek' )
+eval.letters <- c('BP','BL','BU','BW','CC','CH','DH','EL',
+                  'HB','LO','MS','NT','OT','PM',
+                  'SR','TL','WM','WC') ##'SH'
+
+pillow.sites <- c('blackwall_peak_pillow','chilliwack_river','spuzzum_creek','tenquille_lake','upper_squamish','wahleach_lake')
+pillow.letters <- c('BP','CR','SC','TQ','US','WC')
+
+##Excluded due to lack of dates
+##Hope, Lytton, Garibaldi Lake
+
+era.cor <- make_taylor_diagram(cal.courses,cal.letters,
+                    eval.courses,eval.letters,
+                    pillow.sites,pillow.letters,
+                    model='ERA5',type,'darkgreen',model.dir)
+
+##legend('topright',legend=c('Cal.','Eval.','Pillow'),col='black',pt.bg=c('green','red','orange'),pch=c(24,25,23),cex=1.5)
+legend('topright',legend=c('Cal.','Eval.','Pillow'),col='black',pt.bg=c('green','red','orange'),pch=c(22,22,22),pt.cex=2.0,cex=1.5)
+
+
+##make_taylor_diagram(course.sites,course.letters,
+##                    pillow.sites,pillow.letters,
+##                    model='PNWNAmet',type='PRISM_with_elevation','blue',model.dir)
+##make_taylor_diagram(course.sites,course.letters,
+##                    pillow.sites,pillow.letters,
+##                    model='ERA5',type='PRISM_with_elevation','green',model.dir)
+##legend('topright',legend=c('PNWNAmet','ERA5'),col=c('blue','green'),pch=16,cex=1.5)
+
+
+
+
 
 dev.off()
 
 ##
 
 
-}
+
 
