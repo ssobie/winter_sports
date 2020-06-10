@@ -5,7 +5,7 @@ ptm <- proc.time()
 library(PCICt)
 library(ncdf4)
 
-source('/storage/home/ssobie/code/repos/downscale_CMIP6/format.downscaled.files.metadata.r')
+source('/storage/home/ssobie/code/repos/winter_sports/format_gcm_prism_file_metadata.r')
 
 ##------------------------------------------------------------
 ##Pull the time series
@@ -34,36 +34,6 @@ time_series_from_nc <- function(nc) {
 }
 
 ##------------------------------------------------------------
-##Split files for EC into 5-year pieces
-
-time_split_of_bccaqv2_files <- function(bccaq2.file,tmp.dir,ec.dir) {
-
-   years <- c(1950,seq(1956,2096,5))                             
-   cnts <- c(5,rep(4,length(years)-1))
-   for (i in seq_along(years)) {
-      yst <- years[i]
-      yen <- years[i] + cnts[i]
-      tmp.file <- paste0('TIME_SUB_',yst,'-',yen,'.nc')
-      work <- paste('cdo seldate,',yst,'-01-01T00:00:00,',yen,'-12-31T23:59:59 ',tmp.dir,bccaq2.file,' ',tmp.dir,tmp.file,sep='')
-      print(work)
-      system(work)
-
-      tnc <- nc_open(paste0(tmp.dir,tmp.file),write=TRUE)
-      tmp.time <- time_series_from_nc(tnc) 
-      ncatt_put(tnc,varid=0,attname='history',attval='')
-      nc_close(tnc)
-
-      sub.time.file <- gsub(pattern='[0-9]{8}-[0-9]{8}',
-                       replacement=paste0(tmp.time$tmin,'-',tmp.time$tmax),bccaq2.file)
-
-      file.rename(from=paste0(tmp.dir,tmp.file),to=paste0(tmp.dir,sub.time.file))
-      file.copy(from=paste0(tmp.dir,sub.time.file),to=ec.dir,overwrite=TRUE)
-      file.remove(from=paste0(tmp.dir,sub.time.file))
-   }
-}
-
-
-##------------------------------------------------------------
 
 get_var_units <- function(var.name) {
    rv <- switch(var.name,
@@ -73,55 +43,9 @@ get_var_units <- function(var.name) {
    return(rv)
 }
 
-
-##------------------------------------------------------------
-
-make_bccaqv2_file <- function(var.name,gcm,run,scenario,
-                              gcm.file,obs.file,                                   
-                              tmp.dir) {
-
-  obs.nc <- nc_open(paste0(tmp.dir,obs.file))
-  lon <- ncvar_get(obs.nc,'lon')
-  nlon <- length(lon)
-  lat <- ncvar_get(obs.nc,'lat')
-  nlat <- length(lat)
-  nc_close(obs.nc)
-
-  gcm.nc <- nc_open(paste0(tmp.dir,gcm.file))
-  grid <- ncatt_get(gcm.nc,0)$grid_label
-  ##Consider acquiring the other labels (gcm,scenario) similarly?
-  time <- time_series_from_nc(gcm.nc)
-  
-  bccaqv2.file <- paste0(varname,'_day_BCCAQv2+ANUSPLIN300_',gcm,'_historical+',scenario,'_',run,'_',grid,'_',
-                         time$tmin,'-',time$tmax,'.nc')
-
-  x.geog <- ncdim_def('lon', 'degrees_east', lon)
-  y.geog <- ncdim_def('lat', 'degrees_north', lat) 
-  t.geog <- ncdim_def('time', time$units, time$values,
-                       unlim=FALSE, calendar=time$calendar)
-
-  var.geog <- ncvar_def(var.name, units=get_var_units(var.name),
-                        dim=list(x.geog, y.geog, t.geog),
-                        missval=32767,prec='short')
-
-  print('Creating netcdf')
-  write.nc <- nc_create(paste0(tmp.dir,bccaqv2.file), var.geog,h_minfree=104857)
-
-  print('Adding metadata')
-  add_the_metadata(var.name,scenario,run,gcm.nc,write.nc)
-
-  print('Adding Lon and Lat')
-  ncvar_put(write.nc,'lon',lon)
-  ncvar_put(write.nc,'lat',lat)
-  nc_close(gcm.nc)
-
-  rv <- list(file=bccaqv2.file,nc=write.nc)
-  return(rv)
-  
-}
-
 ##------------------------------------------------------------
 ##Function From James
+## n is the number of bytes (16 for short integer)
 
 compute_scale_and_offset <- function(minimum, maximum, n) {
     # stretch/compress data to the available packed range
@@ -131,6 +55,7 @@ compute_scale_and_offset <- function(minimum, maximum, n) {
     c(scale.factor, add.offset)
 }
 
+
 ##------------------------------------------------------------
 
 get_scaling <- function(var.name) {
@@ -139,24 +64,22 @@ get_scaling <- function(var.name) {
     scale_factor <- 0.003051804
     add_offset <- 0.001525902
   }
-  if (var.name=='pr') { ##0 to 1000 mm
-    scale_factor <- 0.01525902
-    add_offset <- 500.00762951
+  if (var.name=='pr') { ##0 to 1500 mm
+    scale_factor <- 0.02288853
+    add_offset <- 750.01144427
   }
   rv <- list(scale=scale_factor,
              offset=add_offset)
   return(rv)
 }
 
-
 ##------------------------------------------------------------
 
 pack_data_for_insertion <- function(input,var.name) {
 
   if (var.name == 'pr') {
-     input[input >= 1000] <- 990
+     input[input >= 1500] <- 1490
   }
-
   scaling <- get_scaling(var.name)
   rv <- round((input - scaling$offset) / scaling$scale)
   rm(input)
@@ -164,126 +87,140 @@ pack_data_for_insertion <- function(input,var.name) {
 
 }
 
+
 ##------------------------------------------------------------
 
-insert_split_file_data <- function(var.name,write.nc,tmp.dir,split.dir) {
+make_gcm_prism_file <- function(var.name,gcm,run,scenario,
+                                gcm.file,ds.file,                                   
+                                tmp.dir) {
 
-   splits <- rep(1:34,each=15)
-   
-   for (i in 1:34) {
-      ix <- which(splits %in% i)
-      lat.ix <- which(splits %in% i)
-      lat.st <- lat.ix[1]
-      lat.en <- tail(lat.ix,1)
-      lat.cnt <- diff(range(lat.ix))+1
+  ds.nc <- nc_open(paste0(tmp.dir,ds.file))
+  lon <- ncvar_get(ds.nc,'lon')
+  nlon <- length(lon)
+  lat <- ncvar_get(ds.nc,'lat')
+  nlat <- length(lat)
 
-      ix.st <- ix[1]
-      ix.cnt <- diff(range(ix))+1
-     
-      split.file <- list.files(path=split.dir, pattern=paste0(var.name,'_L',sprintf('%02d',i),'_',sprintf('%02d',lat.st)))
-      print(split.file)
-      
-      ###file.copy(from=paste0(split.dir,'/',split.file),to=tmp.dir,overwrite=TRUE)
-      Sys.sleep(5)
+  gcm.nc <- nc_open(paste0(tmp.dir,gcm.file))
+  grid <- ncatt_get(gcm.nc,0)$grid_label
+  ##Consider acquiring the other labels (gcm,scenario) similarly?
+  time <- time_series_from_nc(gcm.nc)
+  
+  gcm.prism.file <- paste0(varname,'_day_BCCAQv2+PNWNAmet+PRISM_Vancouver_Whistler_',
+                           gcm,'_historical+',scenario,'_',run,'_',
+                           time$tmin,'-',time$tmax,'.nc')
 
-      split.nc <- nc_open(paste0(split.dir,split.file))
-      ntime <- length(ncvar_get(split.nc,'time'))
-      nlon <- length(ncvar_get(split.nc,'lon'))
-      nlat <- length(ncvar_get(split.nc,'lat'))
-      split.insert <- array(NA,c(nlon,nlat,ntime))
-      for (j in 1:nlat) {      
-         split.sub <- ncvar_get(split.nc,var.name,start=c(1,j,1),count=c(-1,1,-1))
-         split.sub[is.nan(split.sub)] <- NA
-         ##Pack data prior to insertion
-         split.insert[,j,] <- pack_data_for_insertion(split.sub,var.name)
-         rm(split.sub)
-      }
-      ncvar_put(write.nc,var.name,split.insert,start=c(1,ix.st,1),count=c(nlon,ix.cnt,ntime))
-      rm(split.insert)
-      nc_close(split.nc)
-      file.remove(paste0(split.dir,split.file))
-      print('Copied back and cleaned up') 
-      gc()
+  x.geog <- ncdim_def('lon', 'degrees_east', lon)
+  y.geog <- ncdim_def('lat', 'degrees_north', lat) 
+  t.geog <- ncdim_def('time', time$units, time$values,
+                       unlim=FALSE, calendar=time$calendar)
+
+  var.geog <- ncvar_def(var.name, units=get_var_units(var.name),
+                        dim=list(x.geog, y.geog, t.geog),
+                        missval=32767.,prec='short')
+
+  print('Creating netcdf')
+  write.nc <- nc_create(paste0(tmp.dir,gcm.prism.file), var.geog,h_minfree=104857)
+
+  print('Adding metadata')
+  add_the_metadata(var.name,scenario,run,gcm.nc,write.nc)
+
+  print('Adding Lon and Lat')
+  ncvar_put(write.nc,'lon',lon)
+  ncvar_put(write.nc,'lat',lat)
+  nc_close(gcm.nc)
+
+  rv <- list(file=gcm.prism.file,nc=write.nc,ds.nc=ds.nc)
+  return(rv)
+  
+}
+
+##------------------------------------------------------------
+
+insert_file_data <- function(var.name,bccaq2.file,tmp.dir) {
+ 
+  write.nc <- bccaq2.file$nc
+  ds.nc <- bccaq2.file$ds.nc
+  lon <- ncvar_get(ds.nc,'lon')
+  nlon <- length(lon)
+  lat <- ncvar_get(ds.nc,'lat')
+  nlat <- length(lat)
+  time <- ncvar_get(ds.nc,'time')
+  ntime <- length(time)
+
+  for (j in 1:nlat) {      
+     print(paste0('Latitude: ',j,' of ',nlat))
+     split.sub <- ncvar_get(ds.nc,var.name,start=c(1,j,1),count=c(-1,1,-1))
+     split.insert <- pack_data_for_insertion(split.sub,var.name)
+
+     ncvar_put(write.nc,var.name,split.insert,start=c(1,j,1),count=c(nlon,1,ntime))
+     rm(split.sub)
    }
 }
 
 ##------------------------------------------------------------
 
 ##************************************************************
+testing <- FALSE
 
-args <- commandArgs(trailingOnly=TRUE)
-for(i in 1:length(args)){
-    eval(parse(text=args[[i]]))
+
+if (testing) {
+   varname <- 'tasmax'
+   gcm <- 'ACCESS1-0'
+   run <- 'r1i1p1'
+   tmpdir <- '/local_temp/ssobie/vw_meta/'
+} else {
+   args <- commandArgs(trailingOnly=TRUE)
+   for(i in 1:length(args)){
+      eval(parse(text=args[[i]]))
+   }
 }
 
-##varname <- 'tasmax'
-##gcm <- 'CanESM5'
-##run <- 'r2i1p2f1'
-##scenario <- 'ssp585'
-##tmpdir <- '/local_temp/ssobie/ds_assembly/'
-
+scenario <- 'rcp85'
 var.name <- varname
-gcm.dir <- paste0('/storage/data/climate/CMIP6/assembled/',gcm,'/north_america/')
-gcm.file <- paste0(varname,'_day_',gcm,'_North_America_historical+',scenario,'_',run,'_gn_19500101-21001231.nc')
+gcm.dir <- paste0('/storage/data/climate/downscale/BCCAQ2/CMIP5/',gcm,'/')
+gcm.files <- list.files(path=gcm.dir,pattern=scenario)
+gcm.file <- gcm.files[grep(var.name,gcm.files)]
+print(gcm.file)
 
-raw.dir <- '/storage/data/climate/downscale/BCCAQ2/raw_downscaled/'
-ds.dir <- paste0(raw.dir,'ds_',varname,'_',gcm,'_',run,'_',scenario,'_split15')
-write.dir <- paste0('/storage/data/climate/downscale/BCCAQ2/CMIP6_BCCAQv2/',gcm,'/')
+bccaq2.dir <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/',gcm,'/')
+write.dir <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/vw_whistler_gcm_prism/',gcm,'/')
+ds.file <- list.files(path=bccaq2.dir,pattern=paste0(var.name,'_gcm_prism_'))
+print(ds.file)
+if (length(ds.file) != 1) {
+   stop('Incorrect number of downscaled files')
+}
+
 if (!file.exists(write.dir)) {
   dir.create(write.dir,recursive=T)
 }
-
-ec.dir <- paste0(write.dir,gcm,'_',varname,'_',run,'_',scenario,'_5_year_files/')
-if (!file.exists(ec.dir)) {
-  dir.create(ec.dir,recursive=T)
-}
-
-
-obs.dir <- '/storage/data/climate/observations/gridded/ANUSPLIN/ANUSPLIN_300ARCSEC/'
-obs.file <- 'anusplin_template_one.nc'
 
 tmp.dir <- paste0(tmpdir,'combine_',gcm,'_',varname,'_',run,'_',scenario,'_tmp/')
 if (!file.exists(tmp.dir)) {
   dir.create(tmp.dir,recursive=T)
 }
  
-file.copy(from=paste0(obs.dir,obs.file),to=tmp.dir)
-print('Done copying observations')
 file.copy(from=paste0(gcm.dir,gcm.file),to=tmp.dir)
 print('Done copying gcm file')
-file.copy(from=ds.dir,to=tmp.dir,recursive=TRUE)
-print('Done copying DS directory')
+file.copy(from=paste0(bccaq2.dir,ds.file),to=tmp.dir)
+print('Done copying DS file')
 print('Done Copying')
-
-split.dir <- paste0(tmp.dir,'ds_',varname,'_',gcm,'_',run,'_',scenario,'_split15/')
 
 ##-----------------------------------------------
 
 print('Making File') 
 
-bccaqv2.file <- make_bccaqv2_file(var.name=varname,gcm=gcm,run=run,scenario=scenario,
-                                  gcm.file=gcm.file,obs.file=obs.file,                              
-                                  tmp.dir=tmp.dir)
+bccaqv2.file <- make_gcm_prism_file(var.name=varname,gcm=gcm,run=run,scenario=scenario,
+                                    gcm.file=gcm.file,ds.file=ds.file,                              
+                                    tmp.dir=tmp.dir)
 file.remove(paste0(tmp.dir,gcm.file))
-file.remove(paste0(tmp.dir,obs.file))
 
-print('Split file data insertion') 
-insert_split_file_data(var.name,bccaqv2.file$nc,tmp.dir,split.dir)
+print('File data insertion') 
+insert_file_data(var.name,bccaqv2.file,tmp.dir)
 nc_close(bccaqv2.file$nc)
+nc_close(bccaqv2.file$ds.nc)
 
 print('Copying to write dir')
 file.copy(from=paste0(tmp.dir,bccaqv2.file$file),to=write.dir,overwrite=TRUE)
-
-##Split the file by years (5-Years?) to make the transfer 
-##possible for EC
-##-----------------------------------------------
-
-##bccaqv2.file <- list(file="tasmax_day_BCCAQv2+ANUSPLIN300_CanESM5_historical+ssp585_r2i1p2f1_gn_19500101-21001231.nc")
-
-time_split_of_bccaqv2_files(bccaqv2.file$file,tmp.dir,ec.dir)
-
-##-----------------------------------------------
-
 
 file.remove(paste0(tmp.dir,bccaqv2.file$file))
 rm.files <- list.files(path=paste0(tmp.dir,gcm,'/'),recursive=T,full.name=T)

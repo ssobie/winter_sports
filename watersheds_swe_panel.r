@@ -50,7 +50,7 @@ gcm.list <- c('ACCESS1-0','CanESM2','CCSM4','CNRM-CM5','CSIRO-Mk3-6-0','GFDL-ESM
               'HadGEM2-CC','HadGEM2-ES','inmcm4','MIROC5','MPI-ESM-LR','MRI-CGCM3')
 
 var.name <- 'swe'
-clim <- 'april_first'
+clim <- 'annual_maximum'
 seas.ix <- 1
 
 past.ens <- extract_climatology_data(var.name=var.name,interval='1981-2010',
@@ -100,7 +100,7 @@ snow.pillows <- read.csv(paste0(site.dir,'snow_pillow_locations.csv'),header=T,a
 
 ##---------------------------------------------------
 
-plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/mv.watersheds.april.first.swe.contour.panel.png')
+plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/mv.watersheds.annual.maximum.swe.panel.png')
 plot.title <- 'April First SWE'
 
 

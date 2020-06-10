@@ -101,6 +101,7 @@ make_whistler_panel_plot <- function(var.name,plot.type,var.title,plot.data,clas
    wash.shp <- spTransform(readOGR(shade.dir, 'washington', stringsAsFactors=F, verbose=F),CRS("+init=epsg:4326"))
    rivers.shp <- spTransform(readOGR(shade.dir, 'van_whistler_rivers', stringsAsFactors=F, verbose=F),CRS("+init=epsg:4326"))
    lakes.shp <- spTransform(readOGR(shade.dir, 'van_whistler_lakes_simple_0.5%', stringsAsFactors=F, verbose=F),CRS("+init=epsg:4326"))
+   whistler.shp <- spTransform(readOGR(shade.dir, 'whistler_blackcomb_area', stringsAsFactors=F, verbose=F),CRS("+init=epsg:4326"))
 
    image(shade,add=T,col = grey(1:100/100))
 
@@ -114,16 +115,17 @@ make_whistler_panel_plot <- function(var.name,plot.type,var.title,plot.data,clas
    plot(spTransform(wco.shp,CRS(alb.crs)),add=TRUE,col='lightgray',border='darkgray',lwd=0.5)
 
    plot(spTransform(wash.shp,CRS(alb.crs)),add=TRUE,col='gray',border='black',cex=0.5)
+   ##plot(spTransform(whistler.shp,CRS(alb.crs)),add=TRUE,border='yellow',cex=0.5)
 
    village <- list(lon=-122.960634,lat=50.116440)
    whistler <- list(lon=-122.956828,lat=50.060027)
    blackcomb <- list(lon=-122.895274,lat=50.097341)
    olympics <-  list(lon=-123.118321,lat=50.139575)
-   lines(village$lon+c(0,-0.05),village$lat+c(0,0.05),col='darkgray',lwd=3)
-   shadowtext(village$lon-0.1,village$lat+0.05,'Village',adj=4,pos=3,cex=1.55,col='black',bg='white',r=0.15)
+   lines(village$lon+c(0,-0.05),village$lat+c(0,0.05),col='yellow',lwd=3)
+   shadowtext(village$lon-0.1,village$lat+0.05,'Village',adj=4,pos=3,cex=1.55,col='black',bg='yellow',r=0.15)
 
-   lines(whistler$lon+c(0,-0.05),whistler$lat+c(0.0,-0.05),col='darkgray',lwd=3)
-   shadowtext(whistler$lon-0.05,whistler$lat-0.09,'Whistler',adj=4,pos=3,cex=1.55,col='black',bg='white',r=0.15)
+   lines(whistler$lon+c(0,-0.05),whistler$lat+c(0.0,-0.05),col='yellow',lwd=3)
+   shadowtext(whistler$lon-0.05,whistler$lat-0.09,'Whistler',adj=4,pos=3,cex=1.55,col='black',bg='yellow',r=0.15)
 
 ##   lines(blackcomb$lon+c(0,0.0),blackcomb$lat+c(0,0.05),col='gray',lwd=3)
 ##   shadowtext(blackcomb$lon-0,blackcomb$lat+0.05,'Blackcomb',adj=4,pos=3,cex=1.55,col='black',bg='white',r=0.1)

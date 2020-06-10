@@ -20,7 +20,7 @@ get_snow_season_dates <- function(input.snow,dates) {
   lows <- tapply(input.snow,as.factor(years),function(x){which.min(x[40:300])})
 
   sim.snow <- input.snow
-  sim.snow[sim.snow>0] <- 100
+  sim.snow[sim.snow>10] <- 100
 
   patterns <- rle(sim.snow)
   pt     <- patterns$lengths
@@ -61,8 +61,9 @@ area_swe_series <- function(gcm,var.name,swe.file,swe.dir,clip.shp) {
 
    swe.data <- brick(paste0(swe.dir,swe.file))
    swe.mask <- mask(swe.data,clip.shp)
-   swe.series <- as.numeric(cellStats(swe.mask,mean,na.rm=T))*1000
-   swe.cover <- as.numeric(cellStats(swe.mask > 0.1,sum,na.rm=T)) ##Greater than 100mm
+   swe.small <- calc(swe.mask,max) <= 5
+   swe.series <- as.numeric(cellStats(swe.mask*swe.small,mean,na.rm=T))*1000
+   swe.cover <- as.numeric(cellStats(swe.mask > 0.2,sum,na.rm=T)) ##Greater than 100mm
    swe.volume <- as.numeric(cellStats(swe.mask*800*800,sum,na.rm=T)/10e6) ##In Millions of cubic metres
    nc <- nc_open(paste0(swe.dir,swe.file))
    var.time <- format(netcdf.calendar(nc),'%Y-%m-%d')
@@ -96,7 +97,7 @@ gcm.list <- c('ACCESS1-0','CanESM2','CCSM4','CNRM-CM5','CSIRO-Mk3-6-0','GFDL-ESM
 shp <- readOGR('/storage/data/projects/rci/data/assessments/metro_van/shapefiles/','MVWaterSheds', stringsAsFactors=F)
 clip.shp <- spTransform(shp,CRS("+init=epsg:4326"))
 var.name <- 'swe'
-type <- 'april_first'
+type <- 'annual_maximum'
 
 swe.series <- swe.cover <- swe.volume <- matrix(NA,nrow=151,ncol=length(gcm.list))
 swe.time <- vector(mode='list',length=length(gcm.list))
@@ -167,7 +168,7 @@ past.peaks <- one.peaks <- two.peaks <- three.peaks <- matrix(0,nrow=31,ncol=len
 
 for (i in seq_along(gcm.list)) {
    print(gcm.list[i])
-   reg.file <- paste0(reg.dir,'mv_watersheds_',gcm.list[i],'_PNWNAmet_PRISM_TPS_snow_model_data.csv')  
+   reg.file <- paste0(reg.dir,'mv_watersheds_',gcm.list[i],'_PNWNAmet_PRISM_TPS_snow_model_data_masked.csv')  
    reg.data <- read.csv(reg.file,header=T,as.is=T)
 
    ##Scale data 
@@ -241,15 +242,15 @@ three.ends <- apply(three.ends,2,as.numeric)
 
 
 ##---------------------------------------------------------------------
-plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/metro.van.watersheds.boxplots.png')
+plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/metro.van.watersheds.boxplots.revised.png')
 png(file=plot.file,width=6,height=5,units='in',res=600,pointsize=6,bg='white')
 
 par(mfrow=c(3,2))
 par(mar=c(5,6,2,2))
-##April 1 Avg SWE
+#Peak SWE
 
-plot(c(),xlim=c(0.5,4.5),ylim=c(0,1700),axes=FALSE,
-         xlab='Temperature Change',ylab='April 1 SWE (mm)',
+plot(c(),xlim=c(0.5,4.5),ylim=c(250,1250),axes=FALSE,
+         xlab='Temperature Change',ylab='Peak SWE (mm)',
          cex.lab=1.95,cex.axis=1.95,yaxs='i')
 abline(h=seq(250,2000,250),col='lightgray',lty=2)
 boxplot(apply(past.swe,2,mean,na.rm=T),at=1,col='blue',add=T,axes=F)
@@ -261,9 +262,9 @@ axis(1,at=c(1,2,3,4),label=c('Historic','1\u00B0C','2\u00B0C','3\u00B0C'),cex.ax
 axis(2,at=seq(0,1750,250),label=seq(0,1750,250),cex.axis=1.95)
 box(which='plot',lwd=1.5)
 
-##April 1 Snow Cover
-plot(c(),xlim=c(0.5,4.5),ylim=c(30,90),axes=FALSE,
-         xlab='Temperature Change',ylab='Arpil 1 Snow Cover (%)',
+##Peak SWE Snow Cover
+plot(c(),xlim=c(0.5,4.5),ylim=c(40,100),axes=FALSE,
+         xlab='Temperature Change',ylab='Peak SWE Snow Cover (%)',
          cex.lab=1.95,cex.axis=1.95,yaxs='i')
 abline(h=seq(40,100,20),col='lightgray',lty=2)
 boxplot(apply(past.cover,2,mean,na.rm=T)/958*100,at=1,col='blue',add=T,axes=F)
@@ -275,21 +276,21 @@ axis(2,at=seq(0,100,20),label=seq(0,100,20),cex.axis=1.95)
 box(which='plot',lwd=1.5)
 
 ##Starts
-plot(c(),xlim=c(0.5,4.5),ylim=c(274,325),axes=FALSE,
+plot(c(),xlim=c(0.5,4.5),ylim=c(294,335),axes=FALSE,
          xlab='Temperature Change',ylab='Start Day',
          cex.lab=1.95,cex.axis=1.95,yaxs='i')
-abline(h=c(274,288,305,319),col='lightgray',lty=2)
+abline(h=c(274,288,305,319,335),col='lightgray',lty=2)
 boxplot(apply(past.starts,2,mean,na.rm=T),at=1,col='blue',add=T,axes=F)
 boxplot(apply(one.starts,2,mean,na.rm=T),at=2,add=T,col='goldenrod',axes=F)
 boxplot(apply(two.starts,2,mean,na.rm=T),at=3,add=T,col='orange',axes=F)
 boxplot(apply(three.starts,2,mean,na.rm=T),at=4,add=T,col='red',axes=F)
 axis(1,at=c(1,2,3,4),label=c('Historic','1\u00B0C','2\u00B0C','3\u00B0C'),cex.axis=1.95,cex=1.95,cex.lab=1.95)
 ##axis(2,at=seq(275,325,15),label=seq(275,325,15),cex.axis=1.95)
-axis(2,at=c(274,288,305,319),label=c('Oct 1','Oct 15','Nov 1','Nov 15'),cex.axis=1.95)
+axis(2,at=c(274,288,305,319,335),label=c('Oct 1','Oct 15','Nov 1','Nov 15','Dec 1'),cex.axis=1.95)
 box(which='plot',lwd=1.5)
 
 ##Peaks
-plot(c(),xlim=c(0.5,4.5),ylim=c(32,115),axes=FALSE,
+plot(c(),xlim=c(0.5,4.5),ylim=c(32,121),axes=FALSE,
          xlab='Temperature Change',ylab='Peak SWE Day',
          cex.lab=1.95,cex.axis=1.95,yaxs='i')
 abline(h=c(32,60,91,121),col='lightgray',lty=2)
@@ -298,12 +299,12 @@ boxplot(apply(one.peaks,2,mean,na.rm=T),at=2,add=T,col='goldenrod',axes=F)
 boxplot(apply(two.peaks,2,mean,na.rm=T),at=3,add=T,col='orange',axes=F)
 boxplot(apply(three.peaks,2,mean,na.rm=T),at=4,add=T,col='red',axes=F)
 axis(1,at=c(1,2,3,4),label=c('Historic','1\u00B0C','2\u00B0C','3\u00B0C'),cex.axis=1.95,cex=1.95,cex.lab=1.95)
-axis(2,at=c(32,60,91),label=c('Feb','Mar','Apr'),cex.axis=1.95)
+axis(2,at=c(32,60,91,121),label=c('Feb','Mar','Apr','May'),cex.axis=1.95)
 ##axis(2,at=seq(25,125,15),label=seq(25,125,15),cex.axis=1.95)
 box(which='plot',lwd=1.5)
 
 ##Ends
-plot(c(),xlim=c(0.5,4.5),ylim=c(182,290),axes=FALSE,
+plot(c(),xlim=c(0.5,4.5),ylim=c(152,244),axes=FALSE,
          xlab='Temperature Change',ylab='End Date',
          cex.lab=1.95,cex.axis=1.95,yaxs='i')
 abline(h=c(152,182,213,244,274),col='lightgray',lty=2)
@@ -317,16 +318,16 @@ axis(2,at=c(152,182,213,244,274) ,label=c('Jun','Jul','Aug','Sep','Oct'),cex.axi
 box(which='plot',lwd=1.5)
 
 ##Lengths
-plot(c(),xlim=c(0.5,4.5),ylim=c(250,370),axes=FALSE,
+plot(c(),xlim=c(0.5,4.5),ylim=c(190,300),axes=FALSE,
          xlab='Temperature Change',ylab='Length (Days)',
          cex.lab=1.95,cex.axis=1.95,yaxs='i')
-abline(h=seq(225,350,25),col='lightgray',lty=2)
+abline(h=seq(200,350,25),col='lightgray',lty=2)
 boxplot(apply(past.lengths,2,mean,na.rm=T),at=1,col='blue',add=T,axes=F)
 boxplot(apply(one.lengths,2,mean,na.rm=T),at=2,add=T,col='goldenrod',axes=F)
 boxplot(apply(two.lengths,2,mean,na.rm=T),at=3,add=T,col='orange',axes=F)
 boxplot(apply(three.lengths,2,mean,na.rm=T),at=4,add=T,col='red',axes=F)
 axis(1,at=c(1,2,3,4),label=c('Historic','1\u00B0C','2\u00B0C','3\u00B0C'),cex.axis=1.95,cex=1.95,cex.lab=1.95)
-axis(2,at=seq(225,350,25),label=seq(225,350,25),cex.axis=1.95)
+axis(2,at=seq(125,350,25),label=seq(125,350,25),cex.axis=1.95)
 box(which='plot',lwd=1.5)
 
 

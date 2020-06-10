@@ -124,7 +124,7 @@ seas <- 'spring'
 
 plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/whistler.ski.slope.spring.mean.swe.vs.tas.png')
 
-png(file=plot.file,width=6,height=8,units='in',res=600,pointsize=6,bg='white')
+###png(file=plot.file,width=6,height=8,units='in',res=600,pointsize=6,bg='white')
 
 xlim=c(-3,8)
 ylim=c(0,2700)
@@ -133,7 +133,7 @@ par(mfrow=c(4,2))
 par(mar=c(0,0,0,0),oma=c(8,8,5,5))
 
 for (j in seq_along(lat.ix)) { 
-
+   j <- 7
    swe.data <- vector(mode='list',length=length(rcp85.list))
    swe.one <- swe.two <- swe.three <- rep(0,length(rcp85.list))
 
@@ -206,7 +206,7 @@ for (j in seq_along(lat.ix)) {
       ylim <- c(0,1000) ##Spring
       swe.axis <- seq(0,800,200)
    }
-
+browser()
    make_swe_vs_temp_anomaly_plot(swe.series,tas.anoms,
                                  tas.axis=seq(-4,8,2),swe.axis=swe.axis,
                                  xlim=c(-5,9),ylim=ylim,

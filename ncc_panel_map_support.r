@@ -50,6 +50,8 @@ make_van_whistler_panel_plot <- function(var.name,plot.type,var.title,plot.data,
                                          class.breaks=NULL,x.axis=FALSE,y.axis=FALSE,
                                          add.legend=FALSE,leg.title='',letter='') {
    map.range <- range(as.matrix(plot.data),na.rm=T)
+   print('Map range')
+   print(map.range)
    if (!is.null(class.breaks)) {
       class.breaks <- class.breaks
    } else {
@@ -151,7 +153,7 @@ make_van_whistler_panel_plot <- function(var.name,plot.type,var.title,plot.data,
    text(-123.4,49.1,letter,cex=3)
    if (add.legend) {
       par(xpd=NA)  
-      legend('topright',inset=c(-0.24,0), col = "black", 
+      legend('topright',inset=c(-0.31,0), col = "black", 
              legend=rev(map.class.breaks.labels), pch=22, pt.bg = rev(alpha(colour.ramp,0.8)),
              pt.cex=3.55, y.intersp=0.8, title.adj=0.2, title=leg.title, xjust=0, cex=1.8,box.lwd=2)
       par(xpd=FALSE)

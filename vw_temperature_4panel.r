@@ -62,32 +62,38 @@ proj.one.degree <- extract_climatology_data(var.name=var.name,interval='one',
                                             clim=clim,
                                             read.dir=base.dir,clim.dir='temperature_climatologies',
                                             gcm.list=gcm.list)
-##proj.ens.one <- calc(proj.one.degree,mean)*1000
+proj.ens.one <- calc(proj.one.degree,mean)*1000
 ##proj.one.percent <- (proj.ens.one-past.ens.avg)/past.ens.avg*100
 ##proj.one.percent[proj.one.percent > 0] <- 0
-proj.one.percent <- calc((proj.one.degree-past.ens)/past.ens*100,
-                         function(x){quantile(x,0.1,na.rm=T,names=F)})
+proj.one.diff <- proj.ens.one-past.ens.avg
+proj.one.diff[proj.one.diff < -1600] <- -1590
+##proj.one.percent <- calc((proj.one.degree-past.ens)/past.ens*100,
+##                         function(x){quantile(x,0.1,na.rm=T,names=F)})
 
 
 proj.two.degree <- extract_climatology_data(var.name=var.name,interval='two',
                                             clim=clim,
                                             read.dir=base.dir,clim.dir='temperature_climatologies',
                                             gcm.list=gcm.list)
-##proj.ens.two <- calc(proj.two.degree,mean)*1000
+proj.ens.two <- calc(proj.two.degree,mean)*1000
 ##proj.two.percent <- (proj.ens.two-past.ens.avg)/past.ens.avg*100
 ##proj.two.percent[proj.two.percent > 0] <- 0
-proj.two.percent <- calc((proj.two.degree-past.ens)/past.ens*100,
-                         function(x){quantile(x,0.1,na.rm=T,names=F)})
+proj.two.diff <- proj.ens.two-past.ens.avg
+proj.two.diff[proj.two.diff < -1600] <- -1590
+##proj.two.percent <- calc((proj.two.degree-past.ens)/past.ens*100,
+##                         function(x){quantile(x,0.1,na.rm=T,names=F)})
 
 proj.three.degree <- extract_climatology_data(var.name=var.name,interval='three',
                                             clim=clim,
                                             read.dir=base.dir,clim.dir='temperature_climatologies',
                                             gcm.list=gcm.list)
-##proj.ens.three <- calc(proj.three.degree,mean)*1000
+proj.ens.three <- calc(proj.three.degree,mean)*1000
 ##proj.three.percent <- (proj.ens.three-past.ens.avg)/past.ens.avg*100
 ##proj.three.percent[proj.three.percent > 0] <- 0
-proj.three.percent <- calc((proj.three.degree-past.ens)/past.ens*100,
-                         function(x){quantile(x,0.1,na.rm=T,names=F)})
+proj.three.diff <- proj.ens.three-past.ens.avg
+proj.three.diff[proj.three.diff < -1600] <- -1590
+##proj.three.percent <- calc((proj.three.degree-past.ens)/past.ens*100,
+##                         function(x){quantile(x,0.1,na.rm=T,names=F)})
 
 snow.dir <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/bccaq2_tps/BCCAQ2/snow_model/')
 
@@ -99,10 +105,12 @@ snow.pillows <- read.csv(paste0(site.dir,'snow_pillow_locations.csv'),header=T,a
 ##---------------------------------------------------
 
 ##plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/swe.peak.projections.temp.panel.png')
-plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/swe.peak.projections.10th.percentile.temp.panel.png')
+plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/swe.peak.projections.temp.anomaly.panel.png')
+##plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/swe.peak.projections.10th.percentile.temp.panel.png')
 plot.title <- 'Annual Peak SWE'
 ##class.breaks <- c(0,25,50,100,150,200,250,300,400,500,1000,1500,2000)
 class.breaks <- c(0,25,50,100,150,200,250,500,1000,1500,2000,2500,3000,3500)
+diff.breaks <- c(-1600,-1400,-1200,-1000,-800,-600,-400,-200,-100,0,100)
 percent.breaks <- seq(-90,10,10)
 
 png(file=plot.file,width=9,height=6,units='in',res=600,pointsize=6,bg='white')
@@ -112,8 +120,8 @@ par(mar=c(0,0,0,0),oma=c(6,6,4,14))
 rv.swe <- make_van_whistler_panel_plot(var.name='swe',plot.type='past',plot.title,past.ens.avg,
                        class.breaks=class.breaks,y.axis=TRUE,letter='A')
 rv <- make_van_whistler_panel_plot(var.name='swe',plot.type='supp',plot.title,
-                       proj.one.percent,
-                       class.breaks=percent.breaks,letter='B')
+                       proj.one.diff,
+                       class.breaks=diff.breaks,letter='B')
 par(xpd=NA)
 legend('topright',inset=c(-0.29,0), col = "black",
         legend=rv.swe$labels, pch=22, pt.bg = rv.swe$cols,
@@ -121,11 +129,11 @@ legend('topright',inset=c(-0.29,0), col = "black",
 par(xpd=FALSE)
 
 rv <- make_van_whistler_panel_plot(var.name='swe',plot.type='supp',plot.title,
-                       proj.two.percent,
-                       class.breaks=percent.breaks,x.axis=TRUE,y.axis=TRUE,letter='C')
+                       proj.two.diff,
+                       class.breaks=diff.breaks,x.axis=TRUE,y.axis=TRUE,letter='C')
 rv <- make_van_whistler_panel_plot(var.name='swe',plot.type='supp',plot.title,
-                       proj.three.percent,add.legend=TRUE,leg.title='% change',
-                       class.breaks=percent.breaks,x.axis=TRUE,letter='D')
+                       proj.three.diff,add.legend=TRUE,leg.title='mm change',
+                       class.breaks=diff.breaks,x.axis=TRUE,letter='D')
 
 mtext("Longitude (\u00B0E)",side=1,outer=TRUE,cex=2.25,line=4.6)
 mtext("Latitude (\u00B0N)",side=2,outer=TRUE,cex=2.25,line=3.6)

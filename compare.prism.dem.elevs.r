@@ -70,4 +70,47 @@ print(site.info)
 
 write.file <- '/storage/data/projects/rci/data/winter_sports/course_and_pillow_prism_elevation_biases_calibration.csv'
 
-write.table(site.info,file=write.file,sep=',',col.name=T,row.name=F,quote=F)
+##write.table(site.info,file=write.file,sep=',',col.name=T,row.name=F,quote=F)
+
+##---
+##Compare site elevation differences with SWE biases
+
+cal.sites <- c('shovelnose_mountain','brookmere','lightning_lake','callaghan','orchid_lake',
+           'palisade_lake','grouse_mountain','dog_mountain','stave_lake','nahatlatch',
+           'wahleach','klesilkwa','hamilton_hill','dickson_lake','disappointment_lake',
+           'duffey_lake','gnawed_mountain','highland_valley','mcgillivray_pass',
+           'sumallo_river_west','great_bear','upper_squamish','spuzzum_creek','chilliwack_river','tenquille_lake',
+           'wahleach_lake','blackwall_peak_pillow')
+
+cal.elevs <- matrix(NA,nrow=length(cal.sites),ncol=5)
+  for (s in seq_along(cal.sites)) {
+    site <- cal.sites[s]
+    print(site)
+    tas.elev <- get_PRISM_data(site, dem.tas)
+    pr.elev <- get_PRISM_data(site, dem.pr)
+    cal.elevs[s,] <- c(tas.elev$site,
+                        tas.elev$dem,tas.elev$dem-tas.elev$site,
+                        pr.elev$dem,pr.elev$dem-pr.elev$site)
+    
+  }
+
+
+val.sites <- c('blackwall_peak_course','boston_bar_lower','boston_bar_upper','burwell_lake',
+           'chapman_creek','cornwall_hills','diamond_head','edwards_lake',
+           'hollyburn','hope',
+           'loch_lomond','lytton','mount_seymour','new_tashme',
+           'ottomite','pavilion_mountain',
+           'sumallo_river','tenquille_course','whistler_mountain','wolverine_creek' )
+
+val.elevs <- matrix(NA,nrow=length(val.sites),ncol=5)
+  for (s in seq_along(val.sites)) {
+    site <- val.sites[s]
+    print(site)
+    tas.elev <- get_PRISM_data(site, dem.tas)
+    pr.elev <- get_PRISM_data(site, dem.pr)
+    val.elevs[s,] <- c(tas.elev$site,
+                        tas.elev$dem,tas.elev$dem-tas.elev$site,
+                        pr.elev$dem,pr.elev$dem-pr.elev$site)
+    
+  }
+

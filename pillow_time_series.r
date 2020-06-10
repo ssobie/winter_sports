@@ -13,12 +13,12 @@ reanalysis <- 'PNWNAmet'
 var.name <- 'SWE'
 type <- 'PRISM_TPS'
 
-sites <- c('spuzzum_creek','upper_squamish','chilliwack_river','tenquille_lake','wahleach_lake','blackwall_peak_pillow')
-site.names <- c('Spuzzum Creek','Upper Squamish','Chilliwack River','Tenquille Lake','Wahleach Lake','Blackwall Peak')
+sites <- c('blackwall_peak_pillow','spuzzum_creek','upper_squamish','chilliwack_river','tenquille_lake','wahleach_lake')
+site.names <- c('Blackwall Peak','Spuzzum Creek','Upper Squamish','Chilliwack River','Tenquille Lake','Wahleach Lake')
 
     plot.dir <- '/storage/data/projects/rci/data/winter_sports/plots/'
     ##png(file=paste0(plot.dir,model,'.SWE.normalized.pillow.series.1001.2018.png'),width=1000,height=900)
-    png(file=paste0(plot.dir,'PNWNAmet.ERA5.TPS.Elevation.SWE.normalized.pillow.series.2020.png'),width=6,height=6,units='in',res=600,pointsize=6,bg='white')
+    png(file=paste0(plot.dir,'PNWNAmet.ERA5.TPS.Elevation.SWE.normalized.pillow.series.reordered.png'),width=6,height=6,units='in',res=600,pointsize=6,bg='white')
     par(mfrow=c(6,1),mar=c(0,0,0,0),oma=c(7,8,3,3))    
 
 ##Loop over sites

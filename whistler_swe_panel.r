@@ -100,7 +100,7 @@ snow.pillows <- read.csv(paste0(site.dir,'snow_pillow_locations.csv'),header=T,a
 
 ##---------------------------------------------------
 
-plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/whistler.spring.mean.swe.contour.panel.png')
+plot.file <- paste0('/storage/data/projects/rci/data/winter_sports/plots/whistler.spring.mean.swe.contour.panel.area.png')
 plot.title <- 'Spring Mean SWE'
 ##class.breaks <- c(0,50,100,150,200,250,300,400,500,600,700,800,900,1000,1250,1500,1750,2000) ##Winter Mean
 
@@ -109,6 +109,10 @@ class.breaks <- c(0,50,100,200,300,400,500,600,700,800,1000,1250,1500,2000,2500,
 ##class.breaks <- c(0,25,50,100,150,200,250,500,1000,1500,2000,2500,3000,3500)
 percent.breaks <- seq(-90,0,10)
 
+shade.dir <- '/storage/data/projects/rci/data/winter_sports/study_map/'
+whistler.shp <- spTransform(readOGR(shade.dir, 'whistler_blackcomb_area', stringsAsFactors=F, verbose=F),CRS("+init=epsg:4326"))
+
+
 png(file=plot.file,width=9,height=6,units='in',res=600,pointsize=6,bg='white')
 par(mfrow=c(2,2))
 par(mar=c(0,0,0,0),oma=c(6,6,4,14))
@@ -116,24 +120,29 @@ par(mar=c(0,0,0,0),oma=c(6,6,4,14))
 rv <- make_whistler_panel_plot(var.name='swe',plot.type='past',plot.title,past.ens.avg,
                                class.breaks=class.breaks,y.axis=TRUE,letter='A')
 contour(x=lon,y=lat,z=past.matrix,levels=500,lwd=1.5,add=T,labels='')
+plot(whistler.shp,add=TRUE,border='yellow',lwd=1.5)
+
 
 rv <- make_whistler_panel_plot(var.name='swe',plot.type='past',plot.title,
                                proj.ens.one,class.breaks=class.breaks,letter='B',
                                add.legend=TRUE,leg.title='SWE (mm)')
 contour(x=lon,y=lat,z=past.matrix,levels=500,lwd=0.75,add=T,lty=2,labels='')
 contour(x=lon,y=lat,z=one.matrix,levels=500,lwd=1.5,add=T,labels='')
+plot(whistler.shp,add=TRUE,border='yellow',lwd=1.5)
 
 rv <- make_whistler_panel_plot(var.name='swe',plot.type='past',plot.title,
                                proj.ens.two, class.breaks=class.breaks,
                                x.axis=TRUE,y.axis=TRUE,letter='C')
 contour(x=lon,y=lat,z=past.matrix,levels=500,lwd=0.75,add=T,lty=2,labels='')
 contour(x=lon,y=lat,z=two.matrix,levels=500,lwd=1.5,add=T,labels='')
+plot(whistler.shp,add=TRUE,border='yellow',lwd=1.5)
 
 rv <- make_whistler_panel_plot(var.name='swe',plot.type='past',plot.title,
                        proj.ens.three,
                        class.breaks=class.breaks,x.axis=TRUE,letter='D')
 contour(x=lon,y=lat,z=past.matrix,levels=500,lwd=0.75,add=T,lty=2,labels='')
 contour(x=lon,y=lat,z=three.matrix,levels=500,lwd=1.5,add=T,labels='')
+plot(whistler.shp,add=TRUE,border='yellow',lwd=1.5)
 
 mtext("Longitude (\u00B0E)",side=1,outer=TRUE,cex=2.25,line=4.6)
 mtext("Latitude (\u00B0N)",side=2,outer=TRUE,cex=2.25,line=3.6)

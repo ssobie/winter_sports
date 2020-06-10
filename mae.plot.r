@@ -140,29 +140,29 @@ site.names <- c('Shovelnose', ##\nMountain',
                 'Brookmere',
                 'Lightning', ##\nLake',
                 'Callaghan',
-                'Orchid', ##\nLake',
+                'Orchid L.', ##\nLake',
                 'Palisade', ##\nLake',
                 'Grouse', ##\nMountain',
-                'Dog', ##\nMountain',
-                'Stave', ##\nLake',
+                'Dog Mtn.', ##\nMountain',
+                'Stave L.', ##\nLake',
                 'Nahatlatch',
                 'Wahleach',
                 'Klesilkwa',
                 'Hamilton', ##\nHill',
                 'Dickson', ##\nLake',
                 'Disappoint.', ##ment', ##\nLake',
-                'Duffey', ##\nLake',
+                'Duffey L.', ##\nLake',
                 'Gnawed', ##\nMountain',
                 'Highland', ##\nValley',
                 'Mcgillivray', ##\nPass',
-                'Sumallo', ##\nWest',          
+                'Sumallo W.', ##\nWest',          
                 'Bear', ##(Great)
                 'Squamish', ##Upper\n
                 'Spuzzum', ##\nCreek',
                 'Chilliwack', ##\nRiver',
-                'Tenquille', ##\nLake',
+                'Tenquille L.', ##\nLake',
                 'Wahleach L.', ##\nLake',
-                'Blackwall') ##\nPeak')
+                'Blackwall P.') ##\nPeak')
 
 course.lons <- rep(0,length(sites))
 pillow.lons <- rep(0,length(asps))
@@ -197,7 +197,7 @@ cal.mae <- get_mae_values(sites,asps)
 
 
 ##-------------------------------------------------------------------
-
+if (1==0) {
 snodas.bias <- list(lons=lons,lats=lats,bias=cal.mae$sno)
 
 ##save(snodas.bias,file=paste0('/storage/data/projects/rci/data/winter_sports/snodas.bias.RData'))
@@ -213,7 +213,7 @@ ranked.lons <- order(lons)
 ranked.elevs <- order(elevs)
 
 ##png(filename=paste0(plot.dir,'pnwnamet.era5.tps.cal.sites.swe.bias.2020.png'),width=1200,height=700)
-png(file=paste0(plot.dir,'pnwnamet.era5.tps.cal.sites.swe.bias.2020.png'),width=10,height=6,units='in',res=600,pointsize=6,bg='white')
+png(file=paste0(plot.dir,'pnwnamet.era5.tps.cal.sites.swe.bias.45.png'),width=10,height=5,units='in',res=600,pointsize=6,bg='white')
 
 layout(mat = matrix(c(1,2),
                     nrow = 2,
@@ -221,11 +221,17 @@ layout(mat = matrix(c(1,2),
              heights = c(1.6, 1.4),    # Heights of the two rows
              widths = 1)     # Widths of the two columns
 
-par(mar=c(9,5,2,3))
+par(mar=c(7,5,2,3))
 plot(0:alen,0:alen,xlab='',ylab='SWE Bias (mm)',yaxs='i',
      col='white',main='',cex.axis=1.75,cex.lab=1.75,cex.main=2,
      xlim=c(1,alen),ylim=c(-1200,800),axes=FALSE)
-axis(1,at=1:alen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)
+###axis(1,at=1:alen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)
+axis(1,at=1:alen,labels=FALSE,cex=1.75,cex.axis=1.75,las=2)
+par(xpd=NA)
+text((1:alen)-0.8,par("usr")[3] - 260, labels=site.names[ranked.lons],srt=45,pos=1,cex=1.75)
+par(xpd=FALSE)
+print(par("usr"))
+
 axis(2,at=c(-1200,-400,400,800),label=c(-1200,-400,400,800),cex=1.75,cex.axis=1.75)
 abline(h=seq(-800,400,400),lty=2,col='gray',lwd=2)
 abline(v=1:alen,col='gray')
@@ -238,8 +244,13 @@ for (j in 1:alen) {
     points(x=j,y=cal.mae$sno[ranked.lons[j]],pch='-',cex=5,col='red')
 }
 ##text(x=16.6,y=550,'SNODAS',cex=1.25)
-##legend('bottomright',leg=c('ERA5','PNWNAmet','SNODAS'),col=c('blue','green','red'),pch=15,cex=1.5)
+
+legend('bottomright',leg=c('ERA5','PNWNAmet','SNODAS'),col=c('blue','green','red'),pch=c(18,18,15),
+       pt.cex=c(2,2,1.5),box.lwd=1.5,cex=1.5)
+
 box(which='plot',lwd=1.5)
+
+}
 
 sites <- c('blackwall_peak_course','boston_bar_lower','boston_bar_upper','burwell_lake',
            'chapman_creek','cornwall_hills','diamond_head','edwards_lake',
@@ -295,11 +306,19 @@ val.mae <- get_mae_values(sites,asps)
 slen <- length(sites)
 val.mae <- lapply(val.mae,function(x,slen){x[1:slen]},slen)
 
-par(mar=c(9,5,2,9))
+browser()
+
+par(mar=c(7,5,2,9))
 plot(0:elen,0:elen,xlab='',ylab='SWE Bias (mm)',yaxs='i',
      col='white',main='',cex.axis=1.75,cex.lab=1.75,cex.main=2,
      xlim=c(1,elen),ylim=c(-800,800),axes=FALSE)
-axis(1,at=1:elen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)
+###axis(1,at=1:elen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)
+###axis(1,at=1:elen,site.names[ranked.lons],cex=1.75,cex.axis=1.75,las=2)
+axis(1,at=1:elen,labels=FALSE,cex=1.75,cex.axis=1.75,las=2)
+par(xpd=NA)
+text((1:elen)-0.7,par("usr")[3] - 260, labels=site.names[ranked.lons],srt=45,pos=1,cex=1.75)
+par(xpd=FALSE)
+
 axis(2,at=c(-800,-400,400,800),label=c(-800,-400,400,800),cex=1.75,cex.axis=1.75)
 abline(h=seq(-400,400,400),lty=2,col='gray',lwd=2)
 abline(v=1:alen,col='gray')
@@ -311,9 +330,12 @@ for (j in 1:elen) {
     points(x=j+0.175,y=val.mae$pnw[ranked.lons[j]],col='green',pch=18,cex=2.25)
     ##points(x=j,y=val.mae$sno[ranked.lons[j]],pch='-',cex=5,col='red')
 }
-par(xpd=NA)
-legend('topright',inset=c(-0.08,0),leg=c('ERA5','PNW','SNO'),col=c('blue','green','red'),pch=c(18,18,15),pt.cex=c(2,2,1.5),cex=1.5,box.lwd=1.5)
-par(xpd=FALSE)
+legend('bottomright',leg=c('ERA5','PNWNAmet'),col=c('blue','green'),pch=c(18,18),
+       pt.cex=c(2,2,1.5),box.lwd=1.5,cex=1.5)
+
+##par(xpd=NA)
+##legend('topright',inset=c(-0.08,0),leg=c('ERA5','PNW','SNO'),col=c('blue','green','red'),pch=c(18,18,15),pt.cex=c(2,2,1.5),cex=1.5,bo##x.lwd=1.5)
+##par(xpd=FALSE)
 
 box(which='plot',lwd=1.5)
 
